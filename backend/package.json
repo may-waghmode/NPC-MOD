@@ -1,0 +1,29 @@
+{
+  "name": "npc-mode-backend",
+  "version": "1.0.0",
+  "description": "Backend API for NPC Mode — AI-powered life gamification app",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "firebase-admin": "^13.8.0",
+    "googleapis": "^140.0.1",
+    "multer": "^2.1.1",
+    "spotify-web-api-node": "^5.0.2",
+    "uuid": "^10.0.0"
+  },
+  "keywords": [
+    "npc-mode",
+    "gamification",
+    "ai",
+    "quests"
+  ],
+  "license": "MIT"
+}
