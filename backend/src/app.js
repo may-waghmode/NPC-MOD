@@ -18,6 +18,8 @@ app.use(cors({
     'http://localhost:5173',  // Vite dev server
     'http://localhost:4173',  // Vite preview
     'http://localhost:3000',  // Same-origin
+    'https://npc-mod-1728c.web.app',      // Firebase Hosting
+    'https://npc-mod-1728c.firebaseapp.com', // Firebase Hosting alt
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
