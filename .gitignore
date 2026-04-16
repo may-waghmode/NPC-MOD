@@ -1,3 +1,40 @@
+# Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment Variables
 .env
-*.log
+.env.*
+!.env.example
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.local
+
+# Monorepo specific ignore patterns
+backend/node_modules/
+frontend/node_modules/
+backend/coverage/
+frontend/dist/
+
+# Capacitor / Mobile Artifacts
+frontend/android/
+frontend/ios/

@@ -1,0 +1,126 @@
+.onboarding-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--bg-base);
+  padding: var(--s-6);
+  justify-content: center;
+}
+
+.onboarding-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.onboarding-step-counter {
+  font-size: 10px;
+  color: var(--accent-primary);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.onboarding-question {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.onboarding-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboarding-option-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 16px;
+  border-radius: var(--r-sm);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.onboarding-option-btn:hover {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-soft);
+}
+
+.onboarding-option-btn.selected {
+  background: var(--accent-primary);
+  color: #000;
+  border-color: var(--accent-primary);
+}
+
+.onboarding-classes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboarding-class-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.onboarding-class-card:hover {
+  border-color: var(--accent-primary);
+}
+
+.onboarding-class-card.selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #000;
+}
+
+.onboarding-class-info h3 {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: inherit;
+}
+
+.onboarding-class-card.selected h3 {
+  color: #000;
+}
+
+.onboarding-class-info p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.onboarding-class-card.selected p {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.onboarding-submit {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.onboarding-error {
+  color: var(--accent-danger);
+  font-size: 12px;
+  text-align: center;
+  font-family: var(--font-mono);
+  margin-top: 8px;
+}

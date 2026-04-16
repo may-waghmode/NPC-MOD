@@ -7,9 +7,10 @@ import QuestDetailScreen from './screens/QuestDetailScreen';
 import SocialScreen from './screens/SocialScreen';
 import StatsScreen from './screens/StatsScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, isNewUser } = useAuth();
   const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
 
   // Show nothing while Firebase checks auth state
@@ -34,12 +35,21 @@ function AppRoutes() {
   return (
     <div className="app-shell">
       <Routes>
-        <Route path="/" element={<HomeScreen />} />
-        <Route path="/quest/:id" element={<QuestDetailScreen />} />
-        <Route path="/social" element={<SocialScreen />} />
-        <Route path="/stats" element={<StatsScreen />} />
-        <Route path="/profile" element={<ProfileScreen />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        {isNewUser ? (
+          <>
+            <Route path="/onboarding" element={<OnboardingScreen />} />
+            <Route path="*" element={<Navigate to="/onboarding" />} />
+          </>
+        ) : (
+          <>
+            <Route path="/" element={<HomeScreen />} />
+            <Route path="/quest/:id" element={<QuestDetailScreen />} />
+            <Route path="/social" element={<SocialScreen />} />
+            <Route path="/stats" element={<StatsScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </>
+        )}
       </Routes>
     </div>
   );
