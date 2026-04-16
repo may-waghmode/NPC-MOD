@@ -1,0 +1,59 @@
+/* ── Theme Toggle Button — Lab Tactical v2.0 ── */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--bg-card-alt);
+  border: 2px solid var(--border-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  border-color: var(--secondary-container);
+  color: var(--secondary-container);
+  background: var(--bg-card-high);
+}
+
+.theme-toggle:active {
+  transform: translate(1px, 1px);
+}
+
+.theme-toggle-icon {
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover .theme-toggle-icon {
+  transform: rotate(20deg);
+}
+
+/* Animated corner accent */
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 6px 6px 0;
+  border-color: transparent var(--secondary-container) transparent transparent;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.theme-toggle:hover::after {
+  opacity: 1;
+}

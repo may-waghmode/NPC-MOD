@@ -1,23 +1,38 @@
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN SCREEN — Lab Tactical v2.0
+   ═══════════════════════════════════════════════════════════════ */
+
 .login-screen {
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px;
+  padding: 24px 16px;
   position: relative;
   overflow: hidden;
+  background: var(--bg-base);
 }
 
-.login-bg-glow {
+/* Corner decoration lines */
+.login-screen::before,
+.login-screen::after {
+  content: '';
   position: absolute;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
   pointer-events: none;
-  filter: blur(60px);
+}
+.login-screen::before {
+  top: 16px;
+  left: 16px;
+  border-top: 2px solid var(--border-heavy);
+  border-left: 2px solid var(--border-heavy);
+}
+.login-screen::after {
+  bottom: 16px;
+  right: 16px;
+  border-bottom: 2px solid var(--border-heavy);
+  border-right: 2px solid var(--border-heavy);
 }
 
 .login-content {
@@ -26,98 +41,131 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   z-index: 1;
 }
 
+/* ── Logo / Brand ── */
 .login-logo {
   text-align: center;
+  padding: 20px 0 12px;
 }
 
 .login-logo-icon {
-  font-size: 48px;
+  font-size: 44px;
   display: block;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 0 20px var(--primary-glow));
+  margin-bottom: 10px;
 }
 
 .login-title {
-  font-size: 22px;
-  background: linear-gradient(135deg, var(--primary), #9B59FF, var(--xp-gold));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 6px;
+  font-family: var(--font-headline);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  display: block;
 }
 
 .login-subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  letter-spacing: 2px;
+  font-family: var(--font-headline);
+  font-size: 10px;
+  color: var(--secondary-container);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
+  display: block;
 }
 
+/* ── Tagline ── */
 .login-tagline {
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.7;
+  line-height: 1.6;
+  background: var(--bg-card);
+  border: 2px solid var(--border-medium);
+  border-left: 4px solid var(--secondary-container);
+  padding: 12px 14px;
+  width: 100%;
 }
 
+/* ── Form ── */
 .login-form {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
+/* ── Divider ── */
 .login-divider {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  font-family: var(--font-headline);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: var(--text-dim);
-  font-size: 12px;
 }
 
 .login-divider::before,
 .login-divider::after {
   content: '';
   flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  height: 2px;
+  background: var(--border-medium);
 }
 
+/* ── Toggle ── */
 .login-toggle {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
+  text-align: center;
 }
 
 .login-toggle-btn {
   background: none;
   color: var(--primary);
-  font-weight: 600;
-  font-size: 13px;
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Error ── */
+.login-error {
+  font-family: var(--font-headline);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--danger);
+  text-align: center;
+  padding: 10px 14px;
+  background: rgba(186, 26, 26, 0.06);
+  border: 2px solid var(--danger);
+  border-left: 4px solid var(--danger);
+  width: 100%;
+}
+
+/* ── Demo link ── */
+.login-demo {
+  font-family: var(--font-headline);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  transition: color var(--transition-fast);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.login-error {
-  font-size: 12px;
-  color: var(--danger);
-  text-align: center;
-  padding: 8px 12px;
-  background: rgba(255, 71, 87, 0.1);
-  border-radius: var(--radius-md);
-  width: 100%;
-}
-
-.login-demo {
-  font-size: 12px;
-  color: var(--text-dim);
-  transition: color var(--transition-fast);
-}
-
-.login-demo:hover {
-  color: var(--primary);
-}
+.login-demo:hover { color: var(--primary); }

@@ -2,11 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import './BottomNav.css';
 
 const NAV_ITEMS = [
-  { id: 'home', icon: '🏠', label: 'Home', path: '/' },
-  { id: 'social', icon: '👥', label: 'Social', path: '/social' },
-  { id: 'leaderboard', icon: '🏆', label: 'Ranks', path: '/leaderboard' },
-  { id: 'stats', icon: '📊', label: 'Stats', path: '/stats' },
-  { id: 'profile', icon: '👤', label: 'Profile', path: '/profile' },
+  { id: 'home',        icon: 'home',       label: 'HOME',   path: '/' },
+  { id: 'social',      icon: 'groups',     label: 'SQUAD',  path: '/social' },
+  { id: 'leaderboard', icon: 'leaderboard',label: 'RANKS',  path: '/leaderboard' },
+  { id: 'stats',       icon: 'analytics',  label: 'INTEL',  path: '/stats' },
+  { id: 'profile',     icon: 'person',     label: 'PROFILE',path: '/profile' },
 ];
 
 export default function BottomNav({ active }) {
@@ -20,9 +20,13 @@ export default function BottomNav({ active }) {
           className={`bottom-nav-item ${active === item.id ? 'bottom-nav-item--active' : ''}`}
           onClick={() => navigate(item.path)}
         >
-          <span className="bottom-nav-icon">{item.icon}</span>
-          <span className="bottom-nav-label">{item.label}</span>
           {active === item.id && <span className="bottom-nav-glow" />}
+          <span className="material-symbols-outlined bottom-nav-icon"
+            style={active === item.id ? { fontVariationSettings: "'FILL' 1" } : {}}
+          >
+            {item.icon}
+          </span>
+          <span className="bottom-nav-label">{item.label}</span>
         </button>
       ))}
     </nav>

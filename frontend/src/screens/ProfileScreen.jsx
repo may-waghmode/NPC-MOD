@@ -2,6 +2,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePlayer } from '../hooks/usePlayer';
 import { motion } from 'framer-motion';
 import BottomNav from '../components/BottomNav';
+import ThemeToggle from '../components/ThemeToggle';
 import './ProfileScreen.css';
 
 const CLASS_DATA = {
@@ -21,47 +22,52 @@ export default function ProfileScreen() {
 
   return (
     <div className="profile-screen">
-      <h1 className="page-title">👤 Profile</h1>
+      <div className="profile-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-headline)', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--primary)' }}>◆ OPERATIVE_FILE</span>
+        <ThemeToggle />
+      </div>
+      <div className="profile-content">
 
       {/* Character Card */}
       <motion.div
         className="prof-card"
-        style={{ '--cls-color': cls.color }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="prof-glow" />
-        <div className="prof-avatar">{cls.emoji}</div>
-        <h2 className="prof-name">{player?.name || user?.displayName || user?.email?.split('@')[0] || 'Adventurer'}</h2>
-        <div className="prof-level-row">
-          <span className="font-game" style={{ fontSize: 11, color: 'var(--xp-gold)' }}>LEVEL {player?.level || 1}</span>
-          <span className="prof-title-text">{player?.title || 'The Awakening'}</span>
+        <div className="prof-card-header">
+          <span>◆ OPERATIVE PROFILE // {player?.class || 'Explorer'}</span>
         </div>
-
-        <div className="prof-xp">
-          <div className="xp-bar"><div className="xp-bar__fill" style={{ width: `${xpPct}%` }} /></div>
-          <div className="prof-xp-labels">
-            <span className="font-game" style={{ fontSize: 8 }}>{player?.xp || 0} XP</span>
-            <span>{player?.xpToNextLevel || 500} to next level</span>
+        <div className="prof-card-body">
+          <div className="prof-avatar">{cls.emoji}</div>
+          <h2 className="prof-name">{player?.name || user?.displayName || user?.email?.split('@')[0] || 'Adventurer'}</h2>
+          <div className="prof-level-row">
+            <span className="font-game" style={{ fontSize: 10, color: 'var(--secondary-container)' }}>LEVEL {player?.level || 1}</span>
+            <span className="prof-title-text">{player?.title || 'The Awakening'}</span>
           </div>
-        </div>
 
-        {player?.tagline && <p className="prof-tagline">"{player.tagline}"</p>}
+          <div className="prof-xp">
+            <div className="xp-bar"><div className="xp-bar__fill" style={{ width: `${xpPct}%` }} /></div>
+            <div className="prof-xp-labels">
+              <span className="font-game" style={{ fontSize: 8 }}>{player?.xp || 0} XP</span>
+              <span>{player?.xpToNextLevel || 500} to next level</span>
+            </div>
+          </div>
 
-        <div className="prof-stats-row">
-          <div className="prof-stat">
-            <span className="prof-stat-val">{player?.questsCompleted || 0}</span>
-            <span className="prof-stat-key">Quests</span>
-          </div>
-          <div className="prof-stat-divider" />
-          <div className="prof-stat">
-            <span className="prof-stat-val">🔥 {player?.streak || 0}</span>
-            <span className="prof-stat-key">Streak</span>
-          </div>
-          <div className="prof-stat-divider" />
-          <div className="prof-stat">
-            <span className="prof-stat-val">{player?.completionRate || 0}%</span>
-            <span className="prof-stat-key">Rate</span>
+          {player?.tagline && <p className="prof-tagline">"{player.tagline}"</p>}
+
+          <div className="prof-stats-row">
+            <div className="prof-stat">
+              <span className="prof-stat-val">{player?.questsCompleted || 0}</span>
+              <span className="prof-stat-key">Quests</span>
+            </div>
+            <div className="prof-stat">
+              <span className="prof-stat-val">🔥 {player?.streak || 0}</span>
+              <span className="prof-stat-key">Streak</span>
+            </div>
+            <div className="prof-stat">
+              <span className="prof-stat-val">{player?.completionRate || 0}%</span>
+              <span className="prof-stat-key">Rate</span>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -115,7 +121,7 @@ export default function ProfileScreen() {
         🚪 Sign Out
       </button>
 
-      <div style={{ height: 100 }} />
+      </div>{/* end profile-content */}
       <BottomNav active="profile" />
     </div>
   );

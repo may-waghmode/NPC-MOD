@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSocial } from '../hooks/useSocial';
 import { usePlayer } from '../hooks/usePlayer';
 import BottomNav from '../components/BottomNav';
+import ThemeToggle from '../components/ThemeToggle';
 import './SocialScreen.css';
 
 const CLASS_EMOJIS = { Warrior: '⚔️', Scholar: '📚', Social: '🗣️', Explorer: '🧭' };
@@ -46,7 +47,11 @@ export default function SocialScreen() {
 
   return (
     <div className="social-screen">
-      <h1 className="page-title">⚔️ Social Hub</h1>
+      <div className="social-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="page-title">◆ SQUAD_HUB</span>
+        <ThemeToggle />
+      </div>
+      <div className="social-content">
 
       {/* Your Friend Code */}
       {player?.friendCode && (
@@ -59,7 +64,7 @@ export default function SocialScreen() {
 
       {/* Add Friend */}
       <div className="add-friend-section">
-        <h3 className="section-title">Add a Friend</h3>
+        <h3 className="section-title">ADD OPERATIVE</h3>
         <div className="add-friend-row">
           <input
             className="input"
@@ -97,7 +102,7 @@ export default function SocialScreen() {
       {/* Incoming Challenges */}
       {incomingQuests.length > 0 && (
         <div className="incoming-section">
-          <h3 className="section-title">📬 Incoming Challenges ({incomingQuests.length})</h3>
+          <h3 className="section-title">INCOMING CHALLENGES ({incomingQuests.length})</h3>
           <div className="incoming-list">
             {incomingQuests.map(quest => (
               <motion.div key={quest.id} className="incoming-card" layout>
@@ -119,7 +124,7 @@ export default function SocialScreen() {
       )}
 
       {/* Friends List */}
-      <h3 className="section-title" style={{ marginTop: 24 }}>👥 Friends ({friends.length})</h3>
+      <h3 className="section-title">SQUAD ({friends.length})</h3>
 
       {loading ? (
         <div className="flex justify-center" style={{ padding: 32 }}>
@@ -205,7 +210,7 @@ export default function SocialScreen() {
         )}
       </AnimatePresence>
 
-      <div style={{ height: 90 }} />
+      </div>{/* end social-content */}
       <BottomNav active="social" />
     </div>
   );

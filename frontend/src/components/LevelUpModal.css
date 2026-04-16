@@ -1,54 +1,145 @@
+/* ═══════════════════════════════════════════════════════════════
+   LEVEL UP MODAL — Lab Tactical v2.0
+   Full-screen celebration overlay
+   ═══════════════════════════════════════════════════════════════ */
+
 .levelup-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  /* Blueprint grid overlay for drama */
+  background-image:
+    rgba(0,0,0,0.88),
+    linear-gradient(to right, rgba(254,107,0,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(254,107,0,0.05) 1px, transparent 1px);
+  background-size: cover, 32px 32px, 32px 32px;
 }
 
+/* Animated orange bracket corners */
+.levelup-overlay::before,
+.levelup-overlay::after {
+  content: '';
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  animation: bracketPulse 1.5s ease-in-out infinite alternate;
+}
+
+.levelup-overlay::before {
+  top: 20px;
+  left: 20px;
+  border-top: 3px solid var(--secondary-container);
+  border-left: 3px solid var(--secondary-container);
+}
+
+.levelup-overlay::after {
+  bottom: 20px;
+  right: 20px;
+  border-bottom: 3px solid var(--secondary-container);
+  border-right: 3px solid var(--secondary-container);
+}
+
+@keyframes bracketPulse {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* The background glow orb — keep but restyle as orange */
 .levelup-glow {
   position: absolute;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(254, 107, 0, 0.25) 0%, transparent 70%);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   animation: goldenPulse 2s ease-in-out infinite;
+  pointer-events: none;
 }
 
+@keyframes goldenPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+}
+
+/* Content box */
 .levelup-content {
   text-align: center;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 3px solid var(--secondary-container);
+  box-shadow: 0 0 0 1px #000, 8px 8px 0px 0px #000000;
+  padding: 32px 28px;
+  width: calc(100% - 32px);
+  max-width: 320px;
+  clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%);
+  position: relative;
+}
+
+/* Orange chamfer triangle */
+.levelup-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 28px 28px 0;
+  border-color: transparent var(--secondary-container) transparent transparent;
 }
 
 .levelup-stars {
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 24px;
+  margin-bottom: 4px;
+  letter-spacing: 4px;
 }
 
 .levelup-title {
-  font-size: 28px;
-  color: var(--xp-gold);
-  text-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+  font-family: var(--font-game);
+  font-size: 22px;
+  color: var(--secondary-container);
+  line-height: 1.3;
   animation: textPulse 2s ease-in-out infinite;
 }
 
+@keyframes textPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
 .levelup-level {
-  font-size: 18px;
-  color: var(--text-primary);
-  margin-top: 4px;
+  font-family: var(--font-headline);
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  padding: 8px 16px;
+  border-top: 2px solid var(--border-heavy);
+  border-bottom: 2px solid var(--border-heavy);
+  width: 100%;
 }
 
 .levelup-badge {
-  font-size: 14px;
-  color: var(--primary);
-  font-style: italic;
+  font-family: var(--font-headline);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
   margin-top: 4px;
+  border: 2px solid var(--border-medium);
+  padding: 4px 14px;
 }
+
+.mt-24 { margin-top: 16px; }

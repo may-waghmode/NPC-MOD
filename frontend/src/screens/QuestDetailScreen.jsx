@@ -98,17 +98,19 @@ export default function QuestDetailScreen() {
   return (
     <div className="quest-detail-screen">
       {/* Header */}
-      <div className="qd-header" style={{ borderBottom: `2px solid ${catColor}33` }}>
-        <button className="qd-back" onClick={() => navigate(-1)}>← Back</button>
-        <span className="qd-cat-badge" style={{ background: `${catColor}20`, color: catColor }}>
+      <div className="qd-header" style={{ borderBottom: `2px solid ${catColor}` }}>
+        <button className="qd-back" onClick={() => navigate(-1)}>← BACK</button>
+        <span className="qd-cat-badge" style={{ color: catColor }}>
           {quest.category}
         </span>
       </div>
 
       <div className="qd-body">
-        {/* Quest Info */}
-        <h1 className="qd-title">{quest.title}</h1>
-        <p className="qd-desc">{quest.description}</p>
+        {/* Quest Title Block */}
+        <div className="qd-title-block" style={{ borderLeftColor: catColor }}>
+          <h1 className="qd-title">{quest.title}</h1>
+          <p className="qd-desc">{quest.description}</p>
+        </div>
 
         {/* Why It Helps */}
         {quest.why_it_helps && (

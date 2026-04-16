@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
+import ThemeToggle from '../components/ThemeToggle';
 import './LoginScreen.css';
 
 export default function LoginScreen() {
@@ -29,25 +30,26 @@ export default function LoginScreen() {
 
   return (
     <div className="login-screen">
-      <div className="login-bg-glow" />
-
+      <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
+        <ThemeToggle />
+      </div>
       <motion.div
         className="login-content"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
       >
         {/* Logo */}
         <div className="login-logo">
           <span className="login-logo-icon">🎮</span>
-          <h1 className="font-game login-title">NPC MODE</h1>
-          <p className="login-subtitle">Level up your real life</p>
+          <span className="font-game login-title">NPC MODE</span>
+          <span className="login-subtitle">REAL LIFE. GAMIFIED.</span>
         </div>
 
         {/* Tagline */}
         <p className="login-tagline">
           Every game gives you quests to escape real life.<br />
-          <span className="text-gradient">We gave you quests to finally live it.</span>
+          <strong style={{ color: 'var(--secondary-container)' }}>We gave you quests to finally live it.</strong>
         </p>
 
         {/* Auth Form */}
@@ -81,7 +83,7 @@ export default function LoginScreen() {
           />
 
           <button type="submit" className="btn btn--primary btn--full btn--lg" disabled={loading}>
-            {loading ? '...' : mode === 'register' ? '⚔️ Create Character' : '🎮 Enter the Game'}
+            {loading ? '...' : mode === 'register' ? '⚔️ CREATE CHARACTER' : '▶ ENTER THE GAME'}
           </button>
         </form>
 

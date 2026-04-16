@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════════════════════════
+   BOTTOM NAV — Lab Tactical v2.0
+   ═══════════════════════════════════════════════════════════════ */
+
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -5,13 +9,16 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 430px;
+  height: 64px;
   display: flex;
-  background: rgba(13, 15, 26, 0.95);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 8px 12px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
-  z-index: 50;
+  align-items: stretch;
+  background: var(--bg-card);
+  border-top: 2px solid var(--border-heavy);
+  z-index: 100;
+  box-shadow: 0 -2px 0 rgba(0,0,0,0.08);
+
+  /* Angular top-left clip */
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
 }
 
 .bottom-nav-item {
@@ -19,29 +26,80 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 3px;
-  padding: 6px 0;
-  background: none;
-  color: var(--text-dim);
-  transition: color 0.2s;
+  padding: 0 2px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-medium);
   position: relative;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  overflow: hidden;
 }
 
+.bottom-nav-item:last-child {
+  border-right: none;
+}
+
+.bottom-nav-item:hover {
+  background: var(--bg-card-alt);
+}
+
+.bottom-nav-item:active {
+  background: var(--bg-card-high);
+}
+
+/* Active state */
 .bottom-nav-item--active {
-  color: var(--primary);
+  background: rgba(254, 107, 0, 0.06);
 }
 
-.bottom-nav-icon { font-size: 20px; }
-.bottom-nav-label { font-size: 10px; font-weight: 600; }
+/* Orange accent bar at top */
+.bottom-nav-item--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--secondary-container);
+}
 
+/* Subtle background indicator */
 .bottom-nav-glow {
   position: absolute;
-  top: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 3px;
-  background: var(--primary);
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 0 12px var(--primary-glow);
+  inset: 0;
+  background: rgba(254, 107, 0, 0.05);
+  pointer-events: none;
+}
+
+/* Material Symbol icon */
+.bottom-nav-icon {
+  font-size: 22px;
+  color: var(--text-dim);
+  transition: color var(--transition-fast);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
+}
+
+.bottom-nav-item--active .bottom-nav-icon {
+  color: var(--secondary-container);
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Label */
+.bottom-nav-label {
+  font-family: var(--font-headline);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  transition: color var(--transition-fast);
+  line-height: 1;
+}
+
+.bottom-nav-item--active .bottom-nav-label {
+  color: var(--secondary-container);
 }

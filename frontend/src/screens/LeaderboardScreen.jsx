@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import BottomNav from '../components/BottomNav';
+import ThemeToggle from '../components/ThemeToggle';
 import './LeaderboardScreen.css';
 
 const RANK_MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -48,10 +49,14 @@ export default function LeaderboardScreen() {
 
   return (
     <div className="lb-screen">
-      <div className="lb-header">
-        <h1 className="lb-title font-game">🏆 LEADERBOARD</h1>
-        <p className="lb-subtitle">Who's leveling up the fastest?</p>
+      <div className="lb-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <span className="lb-title" style={{ display: 'block' }}>◆ GLOBAL RANKS</span>
+          <span className="lb-subtitle">Top Operatives</span>
+        </div>
+        <ThemeToggle />
       </div>
+      <div className="lb-content">
 
       {/* Your Rank Badge */}
       {yourRank && tab === 'rank' && (
@@ -122,7 +127,7 @@ export default function LeaderboardScreen() {
         </AnimatePresence>
       )}
 
-      <div style={{ height: 90 }} />
+      </div>{/* end lb-content */}
       <BottomNav active="leaderboard" />
     </div>
   );

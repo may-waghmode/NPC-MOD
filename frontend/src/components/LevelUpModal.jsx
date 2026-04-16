@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import './LevelUpModal.css';
 
-const CONFETTI_COLORS = ['#FFD700', '#6C63FF', '#00E5A0', '#FF6B9D', '#FF9F43', '#FF4757'];
+const CONFETTI_COLORS = ['#fe6b00', '#000000', '#a04100', '#191b26', '#fe6b00', '#dadada'];
 
 function ConfettiPiece({ index }) {
   const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];

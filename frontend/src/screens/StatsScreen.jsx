@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { usePlayer } from '../hooks/usePlayer';
 import BottomNav from '../components/BottomNav';
+import ThemeToggle from '../components/ThemeToggle';
 import './StatsScreen.css';
 
 const CAT_COLORS = { fitness: '#00E5A0', growth: '#6C63FF', social: '#FF6B9D', chaos: '#FF9F43', boss: '#FF4757' };
@@ -12,8 +13,11 @@ export default function StatsScreen() {
   if (loading || !player) {
     return (
       <div className="stats-screen">
-        <h1 className="page-title">📊 Your Stats</h1>
-        <div className="flex justify-center" style={{ padding: 40 }}>
+        <div className="stats-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="page-title">◆ INTEL READOUT</span>
+          <ThemeToggle />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
           <div className="loading-dots"><span/><span/><span/></div>
         </div>
         <BottomNav active="stats" />
@@ -28,7 +32,11 @@ export default function StatsScreen() {
 
   return (
     <div className="stats-screen">
-      <h1 className="page-title">📊 Your Stats</h1>
+      <div className="stats-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="page-title">◆ INTEL READOUT</span>
+        <ThemeToggle />
+      </div>
+      <div className="stats-content">
 
       {/* Stat Cards */}
       <div className="stat-grid">
@@ -55,7 +63,7 @@ export default function StatsScreen() {
       {/* Behavior Insights */}
       {hasData && (player.strongestCategory || player.mostAvoidedCategory) && (
         <>
-          <div className="section-header" style={{ marginTop: 24 }}>BEHAVIOR INSIGHTS</div>
+          <div className="section-header">BEHAVIOR INSIGHTS</div>
           <div className="insights-cards">
             {player.strongestCategory && (
               <div className="insight-card" style={{ borderLeftColor: CAT_COLORS[player.strongestCategory] || '#6C63FF' }}>
@@ -82,8 +90,9 @@ export default function StatsScreen() {
       {/* Weekly XP Chart */}
       {hasData && weeklyXP.length > 0 && (
         <>
-          <div className="section-header" style={{ marginTop: 24 }}>XP THIS WEEK</div>
+          <div className="section-header">XP THIS WEEK</div>
           <div className="xp-chart-card">
+            <div className="xp-chart-label">7-DAY XP HISTORY</div>
             <div className="xp-bars">
               {weeklyXP.map((d, i) => {
                 const pct = maxWeekXP > 0 ? (d.xp / maxWeekXP) * 100 : 0;
@@ -109,7 +118,7 @@ export default function StatsScreen() {
       {/* Category Breakdown */}
       {hasData && Object.keys(catStats).length > 0 && (
         <>
-          <div className="section-header" style={{ marginTop: 24 }}>QUEST BREAKDOWN</div>
+          <div className="section-header">QUEST BREAKDOWN</div>
           <div className="cat-breakdown">
             {Object.entries(catStats).map(([cat, stats]) => {
               const total = (stats.completed || 0) + (stats.skipped || 0);
@@ -150,7 +159,7 @@ export default function StatsScreen() {
         </div>
       )}
 
-      <div style={{ height: 90 }} />
+      </div>{/* end stats-content */}
       <BottomNav active="stats" />
     </div>
   );

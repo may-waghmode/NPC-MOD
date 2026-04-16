@@ -7,6 +7,7 @@ import { useMegaQuest } from '../hooks/useMegaQuest';
 import { useNotifications } from '../hooks/useNotifications';
 import BottomNav from '../components/BottomNav';
 import LevelUpModal from '../components/LevelUpModal';
+import ThemeToggle from '../components/ThemeToggle';
 import './HomeScreen.css';
 
 const CAT_COLORS = { fitness: '#00E5A0', growth: '#6C63FF', social: '#FF6B9D', chaos: '#FF9F43', boss: '#FF4757' };
@@ -61,6 +62,21 @@ export default function HomeScreen() {
   return (
     <div className="home-screen">
 
+      {/* ── Top App Bar ── */}
+      <div className="home-topbar">
+        <span className="home-topbar-title">NPC_MODE</span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <ThemeToggle />
+          <div className="home-topbar-badge">
+            {player && <span>LVL {player.level || 1}</span>}
+            {(player?.streak || 0) > 0 && <span>🔥{player.streak}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Content Wrapper ── */}
+      <div className="home-content">
+
       {/* ── Notification Banner ── */}
       {unreadCount > 0 && (
         <motion.div
@@ -114,24 +130,30 @@ export default function HomeScreen() {
       {/* ── Player Card ── */}
       {player && (
         <motion.div className="player-card" initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="pc-top">
-            <div className="pc-avatar">{CLASS_EMOJIS[player.class] || '🧭'}</div>
-            <div className="pc-info">
-              <h2 className="pc-name">{player.name || 'Adventurer'}</h2>
-              <div className="pc-row">
-                <span className="pc-level font-game">LVL {player.level || 1}</span>
-                {(player.streak || 0) > 0 && (
-                  <span className="pc-streak"><span className="streak-flame">🔥</span>{player.streak}</span>
-                )}
-                {player.title && <span className="pc-title">{player.title}</span>}
+          <div className="pc-header">
+            <span>◆ OPERATIVE PROFILE</span>
+            <span style={{ marginLeft: 'auto' }}>{CLASS_EMOJIS[player.class] || '🧭'} {player.class || 'Explorer'}</span>
+          </div>
+          <div className="pc-body">
+            <div className="pc-top">
+              <div className="pc-avatar">{CLASS_EMOJIS[player.class] || '🧭'}</div>
+              <div className="pc-info">
+                <div className="pc-name">{player.name || 'Adventurer'}</div>
+                <div className="pc-row">
+                  <span className="pc-level font-game">LVL {player.level || 1}</span>
+                  {(player.streak || 0) > 0 && (
+                    <span className="pc-streak">🔥 {player.streak}</span>
+                  )}
+                  {player.title && <span className="pc-title">{player.title}</span>}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="pc-xp">
-            <div className="xp-bar"><div className="xp-bar__fill" style={{ width: `${xpPercent}%` }} /></div>
-            <div className="pc-xp-labels">
-              <span className="font-game" style={{ fontSize: 8 }}>{player.xp || 0} XP</span>
-              <span>{player.xpToNextLevel || 500} to next level</span>
+            <div className="pc-xp">
+              <div className="xp-bar"><div className="xp-bar__fill" style={{ width: `${xpPercent}%` }} /></div>
+              <div className="pc-xp-labels">
+                <span className="font-game" style={{ fontSize: 8 }}>{player.xp || 0} XP</span>
+                <span>{player.xpToNextLevel || 500} to next lvl</span>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -140,8 +162,8 @@ export default function HomeScreen() {
       {/* ── Challenge Quests from Friends ── */}
       {challenges && challenges.length > 0 && (
         <>
-          <div className="section-header" style={{ marginTop: 16 }}>
-            ⚔️ FRIEND CHALLENGES ({challenges.length})
+          <div className="section-header">
+            FRIEND CHALLENGES ({challenges.length})
           </div>
           <div className="quest-list">
             {challenges.map((quest, i) => (
@@ -192,38 +214,43 @@ export default function HomeScreen() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
         >
-          <div className="mq-badge-row">
-            <span className="mq-badge">⚡ MEGA QUEST</span>
-            <span className="mq-xp font-game">⚡{megaQuest.xpReward || 400} XP</span>
-          </div>
-          <h3 className="mq-title">{megaQuest.title}</h3>
-          <p className="mq-desc">{megaQuest.description_template || megaQuest.description}</p>
-          <div className="mq-footer">
+          <div className="mq-card-header">
+            <span>☠ BOSS BATTLE — ACTIVE</span>
             <span className="mq-timer font-game">{formattedTime}</span>
-            <span className="mq-players">🌍 {megaQuest.participantCount || 0} players</span>
           </div>
-          {!megaQuest.accepted && (
-            <button className="btn btn--danger btn--full" style={{ marginTop: 12 }} onClick={acceptMegaQuest}>
-              ⚔️ ACCEPT BOSS BATTLE
-            </button>
-          )}
-          {megaQuest.accepted && (
-            <div style={{ marginTop: 12 }}>
-              <div className="mq-accepted">✅ Accepted — Complete before timer runs out!</div>
-              <button
-                className="btn btn--primary btn--full"
-                style={{ marginTop: 8 }}
-                onClick={() => navigate(`/quest/${megaQuest.id}`, { state: { quest: { ...megaQuest, category: 'boss', xp_reward: megaQuest.xpReward || 400 } } })}
-              >
-                📋 Submit Proof
-              </button>
+          <div className="mq-card-body">
+            <div className="mq-badge-row">
+              <span className="mq-badge">⚡ MEGA QUEST</span>
+              <span className="mq-xp font-game">⚡{megaQuest.xpReward || 400} XP</span>
             </div>
-          )}
+            <h3 className="mq-title">{megaQuest.title}</h3>
+            <p className="mq-desc">{megaQuest.description_template || megaQuest.description}</p>
+            <div className="mq-footer">
+              <span className="mq-players">🌍 {megaQuest.participantCount || 0} players in</span>
+            </div>
+            {!megaQuest.accepted && (
+              <button className="btn btn--danger btn--full" style={{ marginTop: 12 }} onClick={acceptMegaQuest}>
+                ⚔️ ACCEPT BOSS BATTLE
+              </button>
+            )}
+            {megaQuest.accepted && (
+              <div style={{ marginTop: 12 }}>
+                <div className="mq-accepted">✓ ACCEPTED — COMPLETE BEFORE TIMER EXPIRES</div>
+                <button
+                  className="btn btn--primary btn--full"
+                  style={{ marginTop: 8 }}
+                  onClick={() => navigate(`/quest/${megaQuest.id}`, { state: { quest: { ...megaQuest, category: 'boss', xp_reward: megaQuest.xpReward || 400 } } })}
+                >
+                  📋 Submit Proof
+                </button>
+              </div>
+            )}
+          </div>
         </motion.div>
       )}
 
       {/* ── Daily Quests ── */}
-      <div className="section-header" style={{ marginTop: 20 }}>
+      <div className="section-header">
         TODAY'S QUESTS {quests.length > 0 && `(${quests.length})`}
       </div>
 
@@ -309,7 +336,8 @@ export default function HomeScreen() {
         </div>
       )}
 
-      <div style={{ height: 90 }} />
+      </div>{/* end home-content */}
+
       <BottomNav active="home" />
 
       <AnimatePresence>
