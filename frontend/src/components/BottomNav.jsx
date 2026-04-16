@@ -4,6 +4,7 @@ import './BottomNav.css';
 const NAV_ITEMS = [
   { id: 'home', icon: '🏠', label: 'Home', path: '/' },
   { id: 'social', icon: '👥', label: 'Social', path: '/social' },
+  { id: 'leaderboard', icon: '🏆', label: 'Ranks', path: '/leaderboard' },
   { id: 'stats', icon: '📊', label: 'Stats', path: '/stats' },
   { id: 'profile', icon: '👤', label: 'Profile', path: '/profile' },
 ];

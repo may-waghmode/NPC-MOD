@@ -1,0 +1,232 @@
+.lb-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 100px;
+}
+
+.lb-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.lb-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.lb-subtitle {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Tabs */
+.lb-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.lb-tab {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.lb-tab--active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 12px var(--primary-glow);
+}
+
+/* Top 3 Podium */
+.lb-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 0 8px;
+}
+
+.lb-podium-card {
+  flex: 1;
+  max-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: var(--radius-lg);
+  padding: 16px 8px 12px;
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+}
+
+.lb-podium-card--1 {
+  transform: scale(1.08);
+  border-color: rgba(255, 215, 0, 0.3);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+  background: linear-gradient(160deg, rgba(255, 215, 0, 0.08) 0%, var(--bg-card) 100%);
+  min-height: 160px;
+}
+
+.lb-podium-card--2 {
+  border-color: rgba(192, 192, 192, 0.2);
+  box-shadow: 0 0 20px rgba(192, 192, 192, 0.1);
+  min-height: 140px;
+}
+
+.lb-podium-card--3 {
+  border-color: rgba(205, 127, 50, 0.2);
+  box-shadow: 0 0 20px rgba(205, 127, 50, 0.1);
+  min-height: 120px;
+}
+
+.lb-rank-crown {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.lb-podium-emoji {
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.lb-podium-name {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-podium-xp {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--xp-gold);
+}
+
+.lb-podium-level {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* List */
+.lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.2s ease;
+}
+
+.lb-row--you {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--bg-card));
+  box-shadow: 0 0 16px var(--primary-glow);
+}
+
+.lb-row-rank {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-dim);
+  min-width: 28px;
+  text-align: center;
+}
+
+.lb-row-rank--top { color: var(--xp-gold); }
+
+.lb-row-emoji {
+  font-size: 22px;
+}
+
+.lb-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lb-row-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-row-name .you-tag {
+  font-size: 10px;
+  color: var(--primary);
+  margin-left: 6px;
+  font-weight: 800;
+}
+
+.lb-row-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.lb-row-xp {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--xp-gold);
+  white-space: nowrap;
+}
+
+.lb-row-streak {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Empty State */
+.lb-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-dim);
+}
+
+.lb-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.lb-empty-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.lb-empty-hint {
+  font-size: 12px;
+}

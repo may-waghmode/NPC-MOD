@@ -6,6 +6,7 @@ import QuestDetailScreen from './screens/QuestDetailScreen';
 import SocialScreen from './screens/SocialScreen';
 import StatsScreen from './screens/StatsScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import LeaderboardScreen from './screens/LeaderboardScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 
 function AppRoutes() {
@@ -44,6 +45,7 @@ function AppRoutes() {
             <Route path="/" element={<HomeScreen />} />
             <Route path="/quest/:id" element={<QuestDetailScreen />} />
             <Route path="/social" element={<SocialScreen />} />
+            <Route path="/leaderboard" element={<LeaderboardScreen />} />
             <Route path="/stats" element={<StatsScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="*" element={<Navigate to="/" />} />
