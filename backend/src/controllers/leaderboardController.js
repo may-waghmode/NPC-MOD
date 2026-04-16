@@ -3,38 +3,74 @@ const { getUser, getFriends } = require('../firebase/firestoreHelpers');
 
 const CLASS_EMOJIS = { Warrior: '⚔️', Scholar: '📚', Social: '🗣️', Explorer: '🧭' };
 
+function formatUser(doc, rank, isYou = false) {
+  const u = doc.data ? doc.data() : doc;
+  return {
+    rank,
+    userId: doc.id || doc.userId,
+    name: u.name || 'Adventurer',
+    level: u.level || 1,
+    xp: u.xp || 0,
+    class: u.class || 'Explorer',
+    classEmoji: CLASS_EMOJIS[u.class] || '🧭',
+    streak: u.streak || 0,
+    title: u.title || 'The Awakening',
+    questsCompleted: u.questsCompleted || 0,
+    isYou,
+  };
+}
+
 /**
  * GET /api/global/leaderboard
- * Public leaderboard — top 50 users by XP.
+ * Local rank — shows user's rank + 25 users above/below them.
+ * If no auth, returns top 50.
  */
 async function getPublicLeaderboard(req, res, next) {
   try {
+    // Get ALL onboarded users sorted by XP
     const snapshot = await db.collection('users')
       .where('onboardingComplete', '==', true)
       .orderBy('xp', 'desc')
-      .limit(50)
+      .limit(200)
       .get();
 
-    const leaderboard = [];
+    const allUsers = [];
     let rank = 1;
     for (const doc of snapshot.docs) {
-      const u = doc.data();
-      leaderboard.push({
-        rank,
-        userId: doc.id,
-        name: u.name || 'Adventurer',
-        level: u.level || 1,
-        xp: u.xp || 0,
-        class: u.class || 'Explorer',
-        classEmoji: CLASS_EMOJIS[u.class] || '🧭',
-        streak: u.streak || 0,
-        title: u.title || 'The Awakening',
-        questsCompleted: u.questsCompleted || 0,
-      });
+      allUsers.push({ ...formatUser(doc, rank), docId: doc.id });
       rank++;
     }
 
-    res.json({ leaderboard, total: leaderboard.length });
+    // If user is authenticated, show nearby ranks
+    const userId = req.userId; // May be undefined for public access
+    if (userId) {
+      const userIndex = allUsers.findIndex(u => u.docId === userId);
+
+      if (userIndex >= 0) {
+        // Mark the user
+        allUsers[userIndex].isYou = true;
+        const userRank = allUsers[userIndex].rank;
+
+        // Get 25 above and 25 below
+        const start = Math.max(0, userIndex - 25);
+        const end = Math.min(allUsers.length, userIndex + 26);
+        const nearbyUsers = allUsers.slice(start, end);
+
+        // Clean up docId before sending
+        const leaderboard = nearbyUsers.map(({ docId, ...rest }) => rest);
+
+        return res.json({
+          leaderboard,
+          total: allUsers.length,
+          yourRank: userRank,
+          yourXP: allUsers[userIndex].xp,
+        });
+      }
+    }
+
+    // Fallback: return top 50
+    const leaderboard = allUsers.slice(0, 50).map(({ docId, ...rest }) => rest);
+    res.json({ leaderboard, total: allUsers.length });
   } catch (err) {
     next(err);
   }
@@ -48,7 +84,6 @@ async function getFriendsLeaderboard(req, res, next) {
   try {
     const { userId } = req;
 
-    // Get current user
     const currentUser = await getUser(userId);
     const entries = [];
 
@@ -67,7 +102,6 @@ async function getFriendsLeaderboard(req, res, next) {
       });
     }
 
-    // Get friends
     const friendDocs = await getFriends(userId);
     for (const doc of friendDocs) {
       const friendUser = await getUser(doc.id);
@@ -87,10 +121,7 @@ async function getFriendsLeaderboard(req, res, next) {
       }
     }
 
-    // Sort by XP descending
     entries.sort((a, b) => b.xp - a.xp);
-
-    // Assign ranks
     const leaderboard = entries.map((entry, i) => ({ ...entry, rank: i + 1 }));
 
     res.json({ leaderboard, total: leaderboard.length });

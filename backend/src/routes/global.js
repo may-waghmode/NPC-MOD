@@ -5,11 +5,25 @@ const { getPublicLeaderboard, getFriendsLeaderboard } = require('../controllers/
 
 const router = express.Router();
 
+// Optional auth — sets req.userId if token present, doesn't block if not
+const optionalAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const { auth } = require('../firebase/config');
+      const token = authHeader.split(' ')[1];
+      const decoded = await auth.verifyIdToken(token);
+      req.userId = decoded.uid;
+    } catch (e) { /* ignore — just proceed without userId */ }
+  }
+  next();
+};
+
 // Mega quest is public (no auth needed for GET)
 router.get('/mega-quest', getMegaQuest);
 
-// Leaderboard — public
-router.get('/leaderboard', getPublicLeaderboard);
+// Leaderboard — public (optional auth for nearby rank)
+router.get('/leaderboard', optionalAuth, getPublicLeaderboard);
 
 // Leaderboard — friends (requires auth)
 router.get('/leaderboard/friends', authMiddleware, getFriendsLeaderboard);

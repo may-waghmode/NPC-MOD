@@ -6,24 +6,6 @@ import './LeaderboardScreen.css';
 
 const RANK_MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
-function PodiumCard({ entry, rank }) {
-  if (!entry) return null;
-  return (
-    <motion.div
-      className={`lb-podium-card lb-podium-card--${rank}`}
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: rank === 1 ? 0.1 : rank === 2 ? 0 : 0.2 }}
-    >
-      <span className="lb-rank-crown">{RANK_MEDALS[rank]}</span>
-      <span className="lb-podium-emoji">{entry.classEmoji || '🧭'}</span>
-      <span className="lb-podium-name">{entry.name}</span>
-      <span className="lb-podium-xp font-game">⚡{entry.xp.toLocaleString()}</span>
-      <span className="lb-podium-level">LVL {entry.level}</span>
-    </motion.div>
-  );
-}
-
 function LeaderRow({ entry, index }) {
   return (
     <motion.div
@@ -54,21 +36,15 @@ function LeaderRow({ entry, index }) {
         </div>
       </div>
       <span className="lb-row-xp font-game">⚡{entry.xp.toLocaleString()}</span>
-      {entry.streak > 0 && <span className="lb-row-streak">🔥{entry.streak}</span>}
     </motion.div>
   );
 }
 
 export default function LeaderboardScreen() {
-  const [tab, setTab] = useState('global');
-  const { publicBoard, friendsBoard, loading, refetch } = useLeaderboard();
+  const [tab, setTab] = useState('rank');
+  const { publicBoard, friendsBoard, yourRank, totalPlayers, loading, refetch } = useLeaderboard();
 
-  const board = tab === 'global' ? publicBoard : friendsBoard;
-  const top3 = board.slice(0, 3);
-  const rest = board.slice(3);
-
-  // Podium order: 2nd, 1st, 3rd
-  const podiumOrder = [top3[1], top3[0], top3[2]];
+  const board = tab === 'rank' ? publicBoard : friendsBoard;
 
   return (
     <div className="lb-screen">
@@ -77,13 +53,27 @@ export default function LeaderboardScreen() {
         <p className="lb-subtitle">Who's leveling up the fastest?</p>
       </div>
 
+      {/* Your Rank Badge */}
+      {yourRank && tab === 'rank' && (
+        <motion.div
+          className="lb-your-rank"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <div className="lb-your-rank-number font-game">#{yourRank}</div>
+          <div className="lb-your-rank-label">
+            Your rank out of <strong>{totalPlayers}</strong> players
+          </div>
+        </motion.div>
+      )}
+
       {/* Tabs */}
       <div className="lb-tabs">
         <button
-          className={`lb-tab ${tab === 'global' ? 'lb-tab--active' : ''}`}
-          onClick={() => setTab('global')}
+          className={`lb-tab ${tab === 'rank' ? 'lb-tab--active' : ''}`}
+          onClick={() => setTab('rank')}
         >
-          🌍 Global
+          📍 Your Rank
         </button>
         <button
           className={`lb-tab ${tab === 'friends' ? 'lb-tab--active' : ''}`}
@@ -123,32 +113,11 @@ export default function LeaderboardScreen() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Top 3 Podium */}
-            {top3.length >= 3 && (
-              <div className="lb-podium">
-                {podiumOrder.map((entry, i) => (
-                  <PodiumCard key={entry?.userId || i} entry={entry} rank={[2, 1, 3][i]} />
-                ))}
-              </div>
-            )}
-
-            {/* If less than 3 players, show all in list */}
-            {top3.length < 3 && (
-              <div className="lb-list">
-                {board.map((entry, i) => (
-                  <LeaderRow key={entry.userId} entry={entry} index={i} />
-                ))}
-              </div>
-            )}
-
-            {/* Rest of the list */}
-            {rest.length > 0 && (
-              <div className="lb-list">
-                {rest.map((entry, i) => (
-                  <LeaderRow key={entry.userId} entry={entry} index={i} />
-                ))}
-              </div>
-            )}
+            <div className="lb-list">
+              {board.map((entry, i) => (
+                <LeaderRow key={entry.userId} entry={entry} index={i} />
+              ))}
+            </div>
           </motion.div>
         </AnimatePresence>
       )}

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePlayer } from '../hooks/usePlayer';
 import { useQuests } from '../hooks/useQuests';
 import { useMegaQuest } from '../hooks/useMegaQuest';
+import { useNotifications } from '../hooks/useNotifications';
 import BottomNav from '../components/BottomNav';
 import LevelUpModal from '../components/LevelUpModal';
 import './HomeScreen.css';
@@ -15,10 +16,12 @@ const CLASS_EMOJIS = { Warrior: '⚔️', Scholar: '📚', Social: '🗣️', Ex
 export default function HomeScreen() {
   const navigate = useNavigate();
   const { player, refetch: refetchPlayer } = usePlayer();
-  const { quests, loading, completeQuest, skipQuest, refetch: refetchQuests } = useQuests();
+  const { quests, challenges, loading, completeQuest, skipQuest, acceptChallenge, refetch: refetchQuests } = useQuests();
   const { megaQuest, formattedTime, acceptMegaQuest } = useMegaQuest();
+  const { notifications, unreadCount, markAllRead } = useNotifications();
   const [levelUp, setLevelUp] = useState(null);
   const [completingId, setCompletingId] = useState(null);
+  const [showNotifs, setShowNotifs] = useState(false);
 
   const handleComplete = async (quest) => {
     if (quest.proof_type !== 'honor_system') {
@@ -38,6 +41,11 @@ export default function HomeScreen() {
     await skipQuest(questId);
   };
 
+  const handleAcceptChallenge = async (questId) => {
+    await acceptChallenge(questId);
+    refetchQuests();
+  };
+
   const xpTotal = (player?.xp || 0) + (player?.xpToNextLevel || 500);
   const xpPercent = xpTotal > 0 ? Math.min(100, ((player?.xp || 0) / xpTotal) * 100) : 0;
 
@@ -48,8 +56,61 @@ export default function HomeScreen() {
     ));
   };
 
+  const unreadNotifs = notifications.filter(n => !n.read);
+
   return (
     <div className="home-screen">
+
+      {/* ── Notification Banner ── */}
+      {unreadCount > 0 && (
+        <motion.div
+          className="notif-banner"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markAllRead(); }}
+        >
+          <span className="notif-banner-icon">🔔</span>
+          <span className="notif-banner-text">
+            {unreadCount} new update{unreadCount > 1 ? 's' : ''} from friends
+          </span>
+          <span className="notif-banner-arrow">{showNotifs ? '▲' : '▼'}</span>
+        </motion.div>
+      )}
+
+      {/* ── Notification List ── */}
+      <AnimatePresence>
+        {showNotifs && unreadNotifs.length > 0 && (
+          <motion.div
+            className="notif-list"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            {unreadNotifs.slice(0, 5).map((notif, i) => (
+              <motion.div
+                key={notif.id || i}
+                className="notif-item"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <span className="notif-item-icon">
+                  {CAT_ICONS[notif.questCategory] || '⚡'}
+                </span>
+                <div className="notif-item-content">
+                  <span className="notif-item-name">{notif.fromName}</span>
+                  {' completed '}
+                  <span className="notif-item-quest">{notif.questTitle}</span>
+                  {notif.xpEarned > 0 && (
+                    <span className="notif-item-xp"> (+{notif.xpEarned} XP)</span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Player Card ── */}
       {player && (
         <motion.div className="player-card" initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }}>
@@ -74,6 +135,53 @@ export default function HomeScreen() {
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* ── Challenge Quests from Friends ── */}
+      {challenges && challenges.length > 0 && (
+        <>
+          <div className="section-header" style={{ marginTop: 16 }}>
+            ⚔️ FRIEND CHALLENGES ({challenges.length})
+          </div>
+          <div className="quest-list">
+            {challenges.map((quest, i) => (
+              <motion.div
+                key={quest.id}
+                className="quest-card challenge-card"
+                style={{ '--cat-color': '#FF6B9D' }}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+              >
+                <div className="qc-color-bar" style={{ background: 'linear-gradient(180deg, #FF6B9D, #FF4757)' }} />
+                <div className="qc-content">
+                  <div className="qc-top">
+                    <span className="qc-badge" style={{ background: 'rgba(255,107,157,0.15)', color: '#FF6B9D' }}>
+                      👤 From {quest.assignedByName || 'Friend'}
+                    </span>
+                    <span className="qc-xp font-game">⚡{quest.xp_reward || 50}</span>
+                  </div>
+                  <h3 className="qc-title">{quest.title}</h3>
+                  <p className="qc-desc">{quest.description}</p>
+                  <div className="qc-actions">
+                    <button
+                      className="btn btn--primary btn--sm"
+                      onClick={() => handleAcceptChallenge(quest.id)}
+                    >
+                      ⚔️ Accept Challenge
+                    </button>
+                    <button
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => handleSkip(quest.id)}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* ── Mega Quest ── */}
@@ -165,6 +273,9 @@ export default function HomeScreen() {
                         <span className="qc-xp font-game">⚡{quest.xp_reward || quest.xpReward || 50}</span>
                       </div>
                     </div>
+                    {quest.assignedByName && (
+                      <span className="qc-from-friend">👤 From {quest.assignedByName}</span>
+                    )}
                     <h3 className="qc-title">{quest.title}</h3>
                     <p className="qc-desc">{quest.description}</p>
                     {quest.estimated_minutes && (

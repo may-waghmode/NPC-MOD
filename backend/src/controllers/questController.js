@@ -30,11 +30,17 @@ async function getDailyQuests(req, res, next) {
       where: { field: 'status', op: '==', value: 'active' },
     });
 
-    // If user already has active quests, return them
+    // 1b. Also fetch pending challenge quests from friends
+    const pendingQuests = await querySubCollection(userId, 'quests', {
+      where: { field: 'status', op: '==', value: 'pending' },
+    });
+    const challenges = pendingQuests.filter(q => q.assignedBy && q.assignedBy !== 'self' && q.assignedBy !== 'system');
+
+    // If user already has active quests, return them + pending challenges
     if (existingQuests.length > 0) {
       const daily = existingQuests.filter(q => q.category !== 'boss');
       const mega = existingQuests.find(q => q.category === 'boss') || null;
-      return res.json({ daily_quests: daily, mega_quest: mega, cached: false });
+      return res.json({ daily_quests: daily, mega_quest: mega, challenges, cached: false });
     }
 
     // 2. Check if user completed onboarding
@@ -168,6 +174,28 @@ async function completeQuest(req, res, next) {
       xpEarned: xpResult.earnedXP,
       timestamp: Timestamp.now(),
     });
+
+    // Notify friends about this completion
+    try {
+      const { getFriends } = require('../firebase/firestoreHelpers');
+      const user = await getUser(userId);
+      const friends = await getFriends(userId);
+      for (const friend of friends) {
+        await addSubDoc(friend.id, 'notifications', {
+          type: 'friend_quest_complete',
+          fromUserId: userId,
+          fromName: user.name || 'A friend',
+          fromClass: user.class || 'Explorer',
+          questTitle: quest.title,
+          questCategory: quest.category || 'growth',
+          xpEarned: xpResult.earnedXP,
+          read: false,
+          createdAt: Timestamp.now(),
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Friend notification failed:', notifErr.message);
+    }
 
     // Invalidate caches
     await redis.del(`quests:${userId}`);

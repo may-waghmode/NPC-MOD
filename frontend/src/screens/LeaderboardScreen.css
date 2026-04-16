@@ -22,6 +22,35 @@
   margin-top: 4px;
 }
 
+/* Your Rank Badge */
+.lb-your-rank {
+  text-align: center;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 159, 67, 0.06));
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.1);
+}
+
+.lb-your-rank-number {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--xp-gold);
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.lb-your-rank-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.lb-your-rank-label strong {
+  color: var(--text-primary);
+}
+
 /* Tabs */
 .lb-tabs {
   display: flex;

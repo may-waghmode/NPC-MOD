@@ -1,5 +1,5 @@
 /**
- * useQuests — fetches daily quests from backend.
+ * useQuests — fetches daily quests + challenge quests from backend.
  * Shows empty state for new users, not fake mock quests.
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -7,6 +7,7 @@ import api from '../api/client';
 
 export function useQuests() {
   const [quests, setQuests] = useState([]);
+  const [challenges, setChallenges] = useState([]);
   const [megaQuest, setMegaQuest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,10 +19,12 @@ export function useQuests() {
       const { data } = await api.get('/quests/daily');
       setQuests(data.daily_quests || []);
       setMegaQuest(data.mega_quest || null);
+      setChallenges(data.challenges || []);
     } catch (err) {
       console.warn('Quests API unavailable:', err.message || err);
       setQuests([]);
       setMegaQuest(null);
+      setChallenges([]);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -49,13 +52,33 @@ export function useQuests() {
     try {
       const { data } = await api.post('/quests/skip', { questId });
       setQuests(prev => prev.filter(q => q.id !== questId));
+      setChallenges(prev => prev.filter(q => q.id !== questId));
       return data;
     } catch (err) {
       console.warn('Skip quest API failed:', err.message || err);
       setQuests(prev => prev.filter(q => q.id !== questId));
+      setChallenges(prev => prev.filter(q => q.id !== questId));
       return { success: true };
     }
   }, []);
 
-  return { quests, megaQuest, loading, error, refetch: fetchQuests, completeQuest, skipQuest };
+  const acceptChallenge = useCallback(async (questId) => {
+    try {
+      const { data } = await api.post('/social/accept-quest', { questId });
+      // Move from challenges to active quests
+      setChallenges(prev => {
+        const accepted = prev.find(q => q.id === questId);
+        if (accepted) {
+          setQuests(q => [...q, { ...accepted, status: 'active' }]);
+        }
+        return prev.filter(q => q.id !== questId);
+      });
+      return data;
+    } catch (err) {
+      console.warn('Accept challenge failed:', err.message || err);
+      return { success: false };
+    }
+  }, []);
+
+  return { quests, challenges, megaQuest, loading, error, refetch: fetchQuests, completeQuest, skipQuest, acceptChallenge };
 }

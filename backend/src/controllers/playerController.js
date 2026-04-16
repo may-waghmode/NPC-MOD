@@ -214,4 +214,48 @@ async function updateProfile(req, res, next) {
   }
 }
 
-module.exports = { onboarding, getStats, updateProfile };
+/**
+ * GET /api/player/notifications
+ * Returns unread notifications (friend activity feed).
+ */
+async function getNotifications(req, res, next) {
+  try {
+    const { userId } = req;
+    const notifications = await querySubCollection(userId, 'notifications', {
+      orderBy: 'createdAt',
+      direction: 'desc',
+      limit: 20,
+    });
+
+    res.json({ notifications });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/player/notifications/read
+ * Mark all notifications as read.
+ */
+async function markNotificationsRead(req, res, next) {
+  try {
+    const { userId } = req;
+    const { db } = require('../firebase/config');
+    const snapshot = await db.collection('users').doc(userId)
+      .collection('notifications')
+      .where('read', '==', false)
+      .get();
+
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.update(doc.ref, { read: true });
+    });
+    await batch.commit();
+
+    res.json({ success: true, updated: snapshot.size });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { onboarding, getStats, updateProfile, getNotifications, markNotificationsRead };
