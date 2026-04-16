@@ -1,0 +1,32 @@
+.boss-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,45,59,0.25);
+  border-radius: var(--r-sm);
+  padding: 16px;
+  margin: 0 var(--s-4) var(--s-3);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  animation: bossPulse 2s ease-in-out infinite;
+  position: relative;
+}
+.boss-card__glow { display: none; }
+.boss-card__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.boss-card__badge {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 8px; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-danger); font-family: var(--font-mono);
+}
+.boss-skull { font-size: 12px; }
+.boss-card__name { font-family: var(--font-game); font-size: 11px; color: var(--accent-danger); margin-bottom: 6px; line-height: 1.8; }
+.boss-card__desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+.boss-card__progress-section { margin-bottom: 12px; }
+.boss-card__progress-labels { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.boss-progress-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); font-family: var(--font-mono); }
+.boss-progress-count { font-size: 9px; color: var(--accent-danger); font-family: var(--font-mono); font-weight: 800; }
+.boss-progress-track { height: 3px; background: var(--accent-danger-soft); border-radius: 0; overflow: hidden; }
+.boss-progress-fill { height: 100%; background: var(--accent-danger); border-radius: 0; box-shadow: 0 0 4px var(--accent-danger); }
+[data-theme="light"] .boss-progress-fill { box-shadow: none; }
+.boss-card__footer { display: flex; align-items: center; justify-content: space-between; }
+.boss-timer { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); font-weight: 700; }
+.boss-fight-btn { font-weight: 800 !important; }
+.boss-card__xp { flex-shrink: 0; }

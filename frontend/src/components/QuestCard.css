@@ -1,0 +1,35 @@
+.quest-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--quest-color);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin: 0 var(--s-4) var(--s-2);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: background 0.1s, border-color 0.1s;
+}
+.quest-card:hover { background: var(--bg-card-hover); }
+.quest-card__strip { display: none; }
+.quest-card::before { display: none; }
+.quest-card__header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.quest-card__icon-wrap {
+  width: 32px; height: 32px; border-radius: var(--r-xs);
+  background: var(--bg-input); border: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.quest-card__meta { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.quest-card__category { font-size: 8px !important; align-self: flex-start; }
+.quest-card__time { font-size: 9px; color: var(--text-dim); font-family: var(--font-mono); font-weight: 700; }
+.quest-card__xp { flex-shrink: 0; }
+.quest-card__title { font-size: 13px; font-weight: 900; color: var(--text-primary); margin-bottom: 3px; line-height: 1.3; }
+.quest-card__desc { font-size: 11px; color: var(--text-secondary); line-height: 1.45; margin-bottom: 8px; }
+.quest-card__difficulty { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.difficulty-dots { display: flex; gap: 2px; }
+.difficulty-dot { width: 5px; height: 5px; border-radius: 0; background: var(--bg-input); border: 1px solid var(--border-strong); }
+.difficulty-dot.active { background: var(--dot-color); border-color: var(--dot-color); }
+.difficulty-label { font-size: 9px; color: var(--text-dim); font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); }
+.quest-card__actions { display: flex; gap: 6px; justify-content: flex-end; }
+.quest-accept-btn { font-weight: 800 !important; }
+.quest-card__accepted { display: flex; align-items: center; justify-content: space-between; padding-top: 2px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); }

@@ -1,0 +1,27 @@
+.levelup-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--overlay-bg); display: flex;
+  align-items: center; justify-content: center; backdrop-filter: blur(6px);
+}
+.levelup-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.levelup-burst { position: absolute; width: 250px; height: 250px; border-radius: 50%; background: radial-gradient(circle, rgba(255,184,0,0.12) 0%, transparent 70%); pointer-events: none; }
+.levelup-content {
+  position: relative; z-index: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 12px; padding: 28px 20px; width: 88%; max-width: 320px;
+  background: var(--bg-card-elevated); border: 1px solid var(--accent-xp);
+  border-radius: var(--r-md); box-shadow: var(--shadow-elevated);
+}
+.levelup-icon { font-size: 36px; }
+.levelup-title { font-size: 16px; color: var(--accent-xp); text-align: center; }
+.levelup-level { font-size: 48px; color: var(--accent-xp); line-height: 1; }
+.levelup-info { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.levelup-subtitle { font-size: 13px; color: var(--text-secondary); }
+.levelup-title-unlock {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: var(--accent-xp-soft); border: 1px solid rgba(255,184,0,0.15);
+  border-radius: var(--r-xs); padding: 8px 16px;
+}
+.unlock-label { font-size: 7px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.14em; font-weight: 800; }
+.unlock-title { font-size: 14px; font-weight: 900; color: var(--accent-xp); text-transform: uppercase; }
+.levelup-xp-gained { font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: var(--accent-success); }
+.levelup-claim-btn { background: var(--accent-xp) !important; color: #0a0800 !important; font-weight: 800 !important; border-color: var(--accent-xp) !important; }

@@ -1,0 +1,34 @@
+.challenge-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-chaos); border-radius: var(--r-sm);
+  padding: 12px 14px; margin-bottom: 10px; box-shadow: var(--shadow-card);
+}
+.challenge-card__glow { display: none; }
+.challenge-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.challenge-avatar {
+  width: 34px; height: 34px; border-radius: var(--r-xs);
+  background: var(--accent-chaos-soft); border: 1px solid rgba(255,122,26,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: var(--accent-chaos); flex-shrink: 0; font-family: var(--font-mono);
+}
+.challenge-meta { flex: 1; }
+.challenge-from-row { display: flex; align-items: center; gap: 6px; margin-bottom: 1px; }
+.challenge-from { font-size: 12px; font-weight: 900; }
+.challenge-type-badge {
+  font-size: 8px; font-weight: 800; background: var(--accent-chaos-soft);
+  color: var(--accent-chaos); border: 1px solid rgba(255,122,26,0.15);
+  padding: 1px 5px; border-radius: var(--r-xs);
+  text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono);
+}
+.challenge-from-level { font-size: 9px; color: var(--text-dim); font-family: var(--font-mono); font-weight: 700; }
+.challenge-timer { font-size: 9px; color: var(--accent-chaos); font-weight: 800; font-family: var(--font-mono); flex-shrink: 0; }
+.challenge-quest {
+  background: var(--bg-input); border-radius: var(--r-xs); padding: 10px;
+  margin-bottom: 10px; border-left: 2px solid var(--accent-chaos);
+}
+.challenge-quest-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-dim); display: block; margin-bottom: 3px; font-family: var(--font-mono); }
+.challenge-quest-title { font-size: 13px; font-weight: 900; color: var(--text-primary); margin-bottom: 3px; }
+.challenge-quest-desc { font-size: 10px; color: var(--text-secondary); line-height: 1.4; }
+.challenge-footer { display: flex; align-items: center; justify-content: space-between; }
+.challenge-actions { display: flex; gap: 6px; }
+.challenge-accept-btn { background: var(--accent-chaos) !important; color: #000 !important; font-weight: 800 !important; }
