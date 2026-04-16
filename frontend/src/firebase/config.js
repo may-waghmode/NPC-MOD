@@ -1,8 +1,6 @@
 /**
  * Firebase Client SDK configuration.
- * 
- * IMPORTANT: Replace these values with your actual Firebase project config
- * from Firebase Console → Project Settings → Web App → Config.
+ * Supports both Google Sign-In and Email/Password auth.
  */
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';

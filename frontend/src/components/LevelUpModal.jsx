@@ -1,89 +1,74 @@
-import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import AppIcon from './AppIcon';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import './LevelUpModal.css';
 
-function spawnConfetti(canvas) {
-  const ctx = canvas.getContext('2d');
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-  const particles = Array.from({ length: 80 }, () => ({
-    x: Math.random() * canvas.width,
-    y: -10,
-    r: Math.random() * 5 + 2,
-    d: Math.random() * 2 + 1,
-    color: ['#FFB800','#7B6FFF','#00FF94','#FF2D3B','#FF7A1A'][Math.floor(Math.random()*5)],
-    tilt: Math.random() * 10 - 5,
-    angle: Math.random() * 360,
-  }));
+const CONFETTI_COLORS = ['#FFD700', '#6C63FF', '#00E5A0', '#FF6B9D', '#FF9F43', '#FF4757'];
 
-  let frame;
-  const draw = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.angle * Math.PI / 180);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r * 2.5);
-      ctx.restore();
-      p.y += p.d * 3;
-      p.x += Math.sin(p.angle) * 0.8;
-      p.angle += 2;
-      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
-    });
-    frame = requestAnimationFrame(draw);
-  };
-  draw();
-  return () => cancelAnimationFrame(frame);
-}
-
-export default function LevelUpModal({ isOpen, level, newTitle, xpGained, onClose }) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    if (!isOpen || !canvasRef.current) return;
-    return spawnConfetti(canvasRef.current);
-  }, [isOpen]);
+function ConfettiPiece({ index }) {
+  const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
+  const left = Math.random() * 100;
+  const delay = Math.random() * 1.5;
+  const size = 6 + Math.random() * 8;
+  const shape = Math.random() > 0.5 ? '50%' : '2px';
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div className="levelup-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <canvas ref={canvasRef} className="levelup-canvas" />
+    <div
+      className="confetti-piece"
+      style={{
+        left: `${left}%`,
+        width: size,
+        height: size,
+        background: color,
+        borderRadius: shape,
+        animationDelay: `${delay}s`,
+        animationDuration: `${2 + Math.random() * 2}s`,
+      }}
+    />
+  );
+}
 
-          <motion.div
-            className="levelup-content"
-            initial={{ scale: 0.8, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.85, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-          >
-            <AppIcon name="flash" size={32} color="var(--accent-xp)" />
+export default function LevelUpModal({ level, title, onClose }) {
+  const [show, setShow] = useState(true);
 
-            <div className="levelup-title font-game">Level Up</div>
-            <div className="levelup-level font-game">{level}</div>
+  useEffect(() => {
+    const timer = setTimeout(() => {}, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
-            <div className="levelup-info">
-              <p className="levelup-subtitle">New rank unlocked</p>
-              <div className="levelup-title-unlock">
-                <span className="unlock-label">// New Title</span>
-                <span className="unlock-title">{newTitle}</span>
-              </div>
-              <div className="levelup-xp-gained font-mono">+{xpGained.toLocaleString()} XP</div>
-            </div>
+  if (!show) return null;
 
-            <motion.button
-              className="btn btn-lg levelup-claim-btn"
-              onClick={onClose}
-              whileTap={{ scale: 0.96 }}
-            >
-              <AppIcon name="check" size={14} color="#000" />
-              Claim Rewards
-            </motion.button>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+  return (
+    <motion.div
+      className="levelup-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Confetti */}
+      <div className="confetti-container">
+        {Array.from({ length: 50 }).map((_, i) => (
+          <ConfettiPiece key={i} index={i} />
+        ))}
+      </div>
+
+      {/* Golden Glow */}
+      <div className="levelup-glow" />
+
+      {/* Content */}
+      <motion.div
+        className="levelup-content"
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', delay: 0.3 }}
+      >
+        <span className="levelup-stars">⭐ ⭐ ⭐</span>
+        <h1 className="font-game levelup-title">LEVEL UP!</h1>
+        <p className="font-game levelup-level">LEVEL {level}</p>
+        {title && <p className="levelup-badge">"{title}"</p>}
+        <button className="btn btn--primary btn--lg mt-24" onClick={() => { setShow(false); onClose?.(); }}>
+          CONTINUE
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }

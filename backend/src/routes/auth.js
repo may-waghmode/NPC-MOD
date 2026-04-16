@@ -61,10 +61,14 @@ router.post('/verify', async (req, res, next) => {
       });
     }
 
+    // Check if user completed onboarding
+    const needsOnboarding = isNewUser || (existingUser && !existingUser.onboardingComplete);
+
     res.json({
       userId,
-      isNewUser,
+      isNewUser: needsOnboarding,
       name: existingUser?.name || decodedToken.name || 'Adventurer',
+      onboardingComplete: existingUser?.onboardingComplete || false,
     });
   } catch (err) {
     if (err.code === 'auth/id-token-expired' || err.code === 'auth/argument-error') {

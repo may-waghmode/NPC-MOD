@@ -1,114 +1,215 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import PlayerCard from '../components/PlayerCard';
-import QuestCard from '../components/QuestCard';
-import BossBattleCard from '../components/BossBattleCard';
-import BottomNav from '../components/BottomNav';
-import LevelUpModal from '../components/LevelUpModal';
-import AppIcon from '../components/AppIcon';
 import { usePlayer } from '../hooks/usePlayer';
 import { useQuests } from '../hooks/useQuests';
+import { useMegaQuest } from '../hooks/useMegaQuest';
+import BottomNav from '../components/BottomNav';
+import LevelUpModal from '../components/LevelUpModal';
 import './HomeScreen.css';
 
+const CAT_COLORS = { fitness: '#00E5A0', growth: '#6C63FF', social: '#FF6B9D', chaos: '#FF9F43', boss: '#FF4757' };
+const CAT_ICONS = { fitness: '💪', growth: '📚', social: '💬', chaos: '🎲', boss: '💀' };
+const CLASS_EMOJIS = { Warrior: '⚔️', Scholar: '📚', Social: '🗣️', Explorer: '🧭' };
+
 export default function HomeScreen() {
-  const { player, loading: playerLoading } = usePlayer();
-  const { quests, bossBattle, loading: questsLoading, refetch, acceptQuest, skipQuest } = useQuests();
-  const [showLevelUp, setShowLevelUp] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
+  const { player, refetch: refetchPlayer } = usePlayer();
+  const { quests, loading, completeQuest, skipQuest, refetch: refetchQuests } = useQuests();
+  const { megaQuest, formattedTime, acceptMegaQuest } = useMegaQuest();
+  const [levelUp, setLevelUp] = useState(null);
+  const [completingId, setCompletingId] = useState(null);
 
-  const handleAcceptQuest = (quest) => {
-    acceptQuest(quest.id);
+  const handleComplete = async (quest) => {
+    if (quest.proof_type !== 'honor_system') {
+      navigate(`/quest/${quest.id}`, { state: { quest } });
+      return;
+    }
+    setCompletingId(quest.id);
+    const result = await completeQuest(quest.id, 'honor_system', {});
+    setCompletingId(null);
+    if (result.leveledUp) {
+      setLevelUp({ level: result.newLevel, title: result.title });
+    }
+    refetchPlayer();
   };
 
-  const handleDeclineQuest = (quest) => {
-    skipQuest(quest.id);
+  const handleSkip = async (questId) => {
+    await skipQuest(questId);
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+  const xpTotal = (player?.xp || 0) + (player?.xpToNextLevel || 500);
+  const xpPercent = xpTotal > 0 ? Math.min(100, ((player?.xp || 0) / xpTotal) * 100) : 0;
+
+  const getDots = (d) => {
+    const n = d === 'hard' ? 3 : d === 'medium' ? 2 : 1;
+    return Array.from({ length: 3 }, (_, i) => (
+      <span key={i} className={`diff-dot ${i < n ? 'diff-dot--on' : ''}`} />
+    ));
   };
-
-  const isLoading = playerLoading || questsLoading;
-
-  if (isLoading) {
-    return (
-      <div className="screen home-screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="font-mono" style={{ color: 'var(--text-dim)', fontSize: 11 }}>// LOADING QUESTS...</p>
-        <BottomNav />
-      </div>
-    );
-  }
 
   return (
-    <div className="screen home-screen">
-      {/* Header */}
-      <div className="home-header">
-        <div className="home-header__top">
-          <div>
-            <h1 className="home-greeting">// Good Evening</h1>
-            <p className="home-subtext">Your destiny awaits, warrior.</p>
+    <div className="home-screen">
+      {/* ── Player Card ── */}
+      {player && (
+        <motion.div className="player-card" initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="pc-top">
+            <div className="pc-avatar">{CLASS_EMOJIS[player.class] || '🧭'}</div>
+            <div className="pc-info">
+              <h2 className="pc-name">{player.name || 'Adventurer'}</h2>
+              <div className="pc-row">
+                <span className="pc-level font-game">LVL {player.level || 1}</span>
+                {(player.streak || 0) > 0 && (
+                  <span className="pc-streak"><span className="streak-flame">🔥</span>{player.streak}</span>
+                )}
+                {player.title && <span className="pc-title">{player.title}</span>}
+              </div>
+            </div>
           </div>
-          <button className="home-levelup-btn" onClick={() => setShowLevelUp(true)} title="Test Level Up">
-            <span className="home-levelup-label">DEMO</span>
-            <AppIcon name="flash" size={14} color="var(--accent-primary)" />
-          </button>
-        </div>
-      </div>
-
-      {/* Player Card */}
-      {player && <PlayerCard player={player} />}
-
-      {/* Daily Quests */}
-      <div className="home-section">
-        <div className="section-header" style={{ padding: '0 16px' }}>
-          <div className="section-title-row">
-            <AppIcon name="swords" size={12} color="var(--text-dim)" />
-            <span className="section-title">Daily Quests</span>
+          <div className="pc-xp">
+            <div className="xp-bar"><div className="xp-bar__fill" style={{ width: `${xpPercent}%` }} /></div>
+            <div className="pc-xp-labels">
+              <span className="font-game" style={{ fontSize: 8 }}>{player.xp || 0} XP</span>
+              <span>{player.xpToNextLevel || 500} to next level</span>
+            </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={handleRefresh} disabled={refreshing}>
-            <AppIcon name="refresh" size={12} />
-            {refreshing ? 'Loading' : 'Refresh'}
-          </button>
-        </div>
+        </motion.div>
+      )}
 
-        <motion.div layout>
-          {quests.length > 0 ? quests.map((quest, i) => (
-            <QuestCard key={quest.id} quest={quest} index={i} onAccept={handleAcceptQuest} onDecline={handleDeclineQuest} />
-          )) : (
-            <motion.div className="home-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <AppIcon name="check" size={36} color="var(--accent-success)" />
-              <p>All quests handled. Refresh for new orders.</p>
-            </motion.div>
+      {/* ── Mega Quest ── */}
+      {megaQuest && (
+        <motion.div
+          className="mega-quest-card"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="mq-badge-row">
+            <span className="mq-badge">⚡ MEGA QUEST</span>
+            <span className="mq-xp font-game">⚡{megaQuest.xpReward || 400} XP</span>
+          </div>
+          <h3 className="mq-title">{megaQuest.title}</h3>
+          <p className="mq-desc">{megaQuest.description_template || megaQuest.description}</p>
+          <div className="mq-footer">
+            <span className="mq-timer font-game">{formattedTime}</span>
+            <span className="mq-players">🌍 {megaQuest.participantCount || 0} players</span>
+          </div>
+          {!megaQuest.accepted && (
+            <button className="btn btn--danger btn--full" style={{ marginTop: 12 }} onClick={acceptMegaQuest}>
+              ⚔️ ACCEPT BOSS BATTLE
+            </button>
+          )}
+          {megaQuest.accepted && (
+            <div style={{ marginTop: 12 }}>
+              <div className="mq-accepted">✅ Accepted — Complete before timer runs out!</div>
+              <button
+                className="btn btn--primary btn--full"
+                style={{ marginTop: 8 }}
+                onClick={() => navigate(`/quest/${megaQuest.id}`, { state: { quest: { ...megaQuest, category: 'boss', xp_reward: megaQuest.xpReward || 400 } } })}
+              >
+                📋 Submit Proof
+              </button>
+            </div>
           )}
         </motion.div>
+      )}
+
+      {/* ── Daily Quests ── */}
+      <div className="section-header" style={{ marginTop: 20 }}>
+        TODAY'S QUESTS {quests.length > 0 && `(${quests.length})`}
       </div>
 
-      {/* Boss */}
-      {bossBattle && (
-        <div className="home-section">
-          <div className="section-header" style={{ padding: '0 16px' }}>
-            <div className="section-title-row">
-              <AppIcon name="skull" size={12} color="var(--accent-danger)" />
-              <span className="section-title" style={{ color: 'var(--accent-danger)' }}>Weekly Boss</span>
-            </div>
-            <span className="boss-warning">URGENT</span>
-          </div>
-          <BossBattleCard boss={bossBattle} />
+      {loading ? (
+        <div className="flex justify-center" style={{ padding: 40 }}>
+          <div className="loading-dots"><span /><span /><span /></div>
+        </div>
+      ) : quests.length === 0 ? (
+        <div className="empty-quests">
+          <span style={{ fontSize: 40 }}>✨</span>
+          <p style={{ fontWeight: 600 }}>No active quests</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+            {player?.questsCompleted > 0
+              ? 'All done! New quests generate in a few hours.'
+              : 'Complete onboarding to get your first AI-generated quests!'}
+          </p>
+          <button className="btn btn--primary btn--sm" style={{ marginTop: 12 }} onClick={refetchQuests}>
+            🔄 Refresh Quests
+          </button>
+        </div>
+      ) : (
+        <div className="quest-list">
+          <AnimatePresence>
+            {quests.map((quest, i) => {
+              const cat = quest.category || 'growth';
+              const color = CAT_COLORS[cat] || '#6C63FF';
+              const isCompleting = completingId === quest.id;
+              return (
+                <motion.div
+                  key={quest.id}
+                  className="quest-card"
+                  style={{ '--cat-color': color }}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0, padding: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  layout
+                >
+                  <div className="qc-color-bar" style={{ background: color }} />
+                  <div className="qc-content">
+                    <div className="qc-top">
+                      <span className="qc-badge" style={{ background: `${color}20`, color }}>
+                        {CAT_ICONS[cat]} {cat}
+                      </span>
+                      <div className="qc-right">
+                        <div className="qc-dots">{getDots(quest.difficulty)}</div>
+                        <span className="qc-xp font-game">⚡{quest.xp_reward || quest.xpReward || 50}</span>
+                      </div>
+                    </div>
+                    <h3 className="qc-title">{quest.title}</h3>
+                    <p className="qc-desc">{quest.description}</p>
+                    {quest.estimated_minutes && (
+                      <span className="qc-time">⏱️ ~{quest.estimated_minutes} min</span>
+                    )}
+                    <div className="qc-actions">
+                      <button
+                        className="btn btn--primary btn--sm"
+                        onClick={() => handleComplete(quest)}
+                        disabled={isCompleting}
+                      >
+                        {isCompleting ? '...' : quest.proof_type === 'photo' ? '📸 Photo Proof' : quest.proof_type === 'text' ? '✍️ Text Proof' : '✅ Complete'}
+                      </button>
+                      <button className="btn btn--ghost btn--sm" onClick={() => handleSkip(quest.id)}>
+                        Skip
+                      </button>
+                      {quest.proof_type !== 'honor_system' && (
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => navigate(`/quest/${quest.id}`, { state: { quest } })}
+                        >
+                          Details →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
 
-      <div style={{ height: 16 }} />
-      <BottomNav />
+      <div style={{ height: 90 }} />
+      <BottomNav active="home" />
 
-      <LevelUpModal
-        isOpen={showLevelUp}
-        level={player ? player.level + 1 : 2}
-        newTitle="Novice Explorer"
-        xpGained={1500}
-        onClose={() => setShowLevelUp(false)}
-      />
+      <AnimatePresence>
+        {levelUp && (
+          <LevelUpModal
+            level={levelUp.level}
+            title={levelUp.title}
+            onClose={() => { setLevelUp(null); refetchPlayer(); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

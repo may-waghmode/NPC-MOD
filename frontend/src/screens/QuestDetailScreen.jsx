@@ -1,151 +1,258 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import AppIcon from '../components/AppIcon';
 import { useQuests } from '../hooks/useQuests';
-import { CATEGORY_COLORS, CATEGORY_LABELS, mockQuests, mockBossBattle } from '../data/mockData';
+import LevelUpModal from '../components/LevelUpModal';
+import { usePlayer } from '../hooks/usePlayer';
 import './QuestDetailScreen.css';
 
-export default function QuestDetailScreen() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { quests, bossBattle, completeQuest } = useQuests();
-  const [completed, setCompleted] = useState(false);
-  const [showXPFly, setShowXPFly] = useState(false);
-  const [proof, setProof] = useState(null);
-  const [completionResult, setCompletionResult] = useState(null);
+const CAT_COLORS = { fitness: '#00E5A0', growth: '#6C63FF', social: '#FF6B9D', chaos: '#FF9F43', boss: '#FF4757' };
 
-  // Find quest from live data, fallback to mock
-  let quest;
-  if (id === 'boss') {
-    const boss = bossBattle || mockBossBattle;
-    quest = { ...boss, category: 'boss', icon: 'skull', title: boss.name || boss.title, xpReward: boss.xpReward };
-  } else {
-    quest = quests.find(q => q.id === id) || mockQuests.find(q => q.id === id);
-  }
+export default function QuestDetailScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const quest = location.state?.quest;
+  const { completeQuest } = useQuests();
+  const { refetch: refetchPlayer } = usePlayer();
+  const fileInputRef = useRef(null);
+
+  const [proofText, setProofText] = useState('');
+  const [proofImage, setProofImage] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const [result, setResult] = useState(null);
+  const [levelUp, setLevelUp] = useState(null);
 
   if (!quest) {
-    return (
-      <div className="screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>// QUEST NOT FOUND</p>
-      </div>
-    );
+    navigate('/');
+    return null;
   }
 
-  const color = CATEGORY_COLORS[quest.category] || 'var(--accent-primary)';
-  const label = CATEGORY_LABELS[quest.category] || quest.category;
+  const catColor = CAT_COLORS[quest.category] || '#6C63FF';
+  const proofType = quest.proof_type || 'honor_system';
 
-  const handleComplete = async () => {
-    setShowXPFly(true);
-    try {
-      const result = await completeQuest(quest.id, proof?.name);
-      setCompletionResult(result);
-    } catch (err) {
-      console.warn('Complete failed:', err);
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
     }
-    setTimeout(() => { setCompleted(true); setShowXPFly(false); }, 1000);
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProofImage({
+        base64: reader.result.split(',')[1],
+        mimeType: file.type,
+        preview: reader.result,
+        fileName: file.name,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async () => {
+    setVerifying(true);
+    const proofData = {};
+
+    if (proofType === 'text') {
+      proofData.text = proofText;
+    }
+    if (proofType === 'photo') {
+      if (proofImage) {
+        proofData.imageBase64 = proofImage.base64;
+        proofData.imageMimeType = proofImage.mimeType;
+      } else {
+        // No photo? Submit as honor system
+        proofData.text = 'Completed (no photo attached)';
+      }
+    }
+
+    try {
+      const res = await completeQuest(quest.id, proofType, proofData);
+      setResult(res);
+      if (res.leveledUp) {
+        setTimeout(() => setLevelUp({ level: res.newLevel, title: res.title }), 800);
+      }
+      refetchPlayer();
+    } catch (err) {
+      setResult({ verified: true, message: 'Completed!', earnedXP: quest.xp_reward || 50 });
+    }
+    setVerifying(false);
+  };
+
+  const canSubmit = () => {
+    if (verifying) return false;
+    if (proofType === 'text' && !proofText.trim()) return false;
+    // Photo proof: allow submit even without photo (will auto-approve)
+    return true;
   };
 
   return (
-    <div className="screen quest-detail-screen">
-      {/* Top bar */}
-      <div className="quest-detail__topbar">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <AppIcon name="back" size={14} /> Back
-        </button>
-        <span className="badge" style={{ background: `${color}12`, color, border: `1px solid ${color}30`, borderRadius: 'var(--r-xs)' }}>
-          {label}
+    <div className="quest-detail-screen">
+      {/* Header */}
+      <div className="qd-header" style={{ borderBottom: `2px solid ${catColor}33` }}>
+        <button className="qd-back" onClick={() => navigate(-1)}>← Back</button>
+        <span className="qd-cat-badge" style={{ background: `${catColor}20`, color: catColor }}>
+          {quest.category}
         </span>
       </div>
 
-      {/* Hero */}
-      <div className="quest-detail__hero">
-        <motion.div className="quest-detail__icon-wrap" animate={{ y: [0, -6, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
-          <AppIcon name={quest.icon} size={48} color={color} />
-        </motion.div>
-        <h1 className="quest-detail__title">{quest.title}</h1>
-        <div className="quest-detail__meta-row">
-          <span className="badge badge-xp">+{quest.xpReward} XP</span>
-          {quest.timeLeft && <span className="quest-time-left">{quest.timeLeft} remaining</span>}
-        </div>
-      </div>
+      <div className="qd-body">
+        {/* Quest Info */}
+        <h1 className="qd-title">{quest.title}</h1>
+        <p className="qd-desc">{quest.description}</p>
 
-      {/* Lore */}
-      <div className="quest-detail__section">
-        <div className="section-header">
-          <div className="section-title-row">
-            <AppIcon name="scroll" size={11} color="var(--text-dim)" />
-            <span className="section-title">The Lore</span>
+        {/* Why It Helps */}
+        {quest.why_it_helps && (
+          <div className="qd-insight" style={{ borderLeftColor: catColor }}>
+            <span className="qd-insight-icon">💡</span>
+            <div>
+              <span className="qd-insight-label">Why This Helps You</span>
+              <p className="qd-insight-text">{quest.why_it_helps}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Meta */}
+        <div className="qd-meta-row">
+          <div className="qd-meta-chip">
+            <span className="qd-meta-val font-game" style={{ color: 'var(--xp-gold)' }}>⚡ {quest.xp_reward || quest.xpReward || 50}</span>
+            <span className="qd-meta-key">XP Reward</span>
+          </div>
+          <div className="qd-meta-chip">
+            <span className="qd-meta-val">~{quest.estimated_minutes || 30}m</span>
+            <span className="qd-meta-key">Estimated</span>
+          </div>
+          <div className="qd-meta-chip">
+            <span className="qd-meta-val">{proofType === 'photo' ? '📸' : proofType === 'text' ? '✍️' : '✅'}</span>
+            <span className="qd-meta-key">{proofType === 'photo' ? 'Photo' : proofType === 'text' ? 'Text' : 'Honor'}</span>
           </div>
         </div>
-        <div className="quest-lore-card card">
-          <div className="quest-lore-line" style={{ background: color }} />
-          <p className="quest-lore-text">{quest.lore || quest.description}</p>
-        </div>
-      </div>
 
-      {/* Proof */}
-      <div className="quest-detail__section">
-        <div className="section-header">
-          <div className="section-title-row">
-            <AppIcon name="camera" size={11} color="var(--text-dim)" />
-            <span className="section-title">Proof of Deed</span>
-          </div>
-        </div>
-        <label className="proof-upload-area card">
-          <input type="file" accept="image/*" hidden onChange={e => setProof(e.target.files[0])} />
-          {proof ? (
-            <div className="proof-selected">
-              <AppIcon name="check" size={28} color="var(--accent-success)" />
-              <span className="proof-filename">{proof.name}</span>
-            </div>
-          ) : (
-            <div className="proof-placeholder">
-              <AppIcon name="camera" size={36} color="var(--text-dim)" />
-              <p>Tap to upload photo / video evidence</p>
-              <span className="proof-subtext">Capture your proof of completion</span>
-            </div>
-          )}
-        </label>
-      </div>
+        {/* ── Proof Submission ── */}
+        {!result && (
+          <div className="qd-proof">
+            <h3 className="qd-proof-heading">Submit Your Proof</h3>
+            {quest.proof_instructions && (
+              <p className="qd-proof-hint">{quest.proof_instructions}</p>
+            )}
 
-      {/* CTA */}
-      <div className="quest-detail__cta">
-        <AnimatePresence mode="wait">
-          {!completed ? (
-            <motion.div style={{ position: 'relative' }}>
-              <motion.button
-                className="btn btn-lg quest-complete-btn"
-                style={{ background: color, color: '#000', fontWeight: 800, border: 'none' }}
-                onClick={handleComplete}
-                whileTap={{ scale: 0.96 }}
-              >
-                <AppIcon name="check" size={16} color="#000" />
-                Complete Quest
-              </motion.button>
-              <AnimatePresence>
-                {showXPFly && (
-                  <motion.div className="xp-fly" initial={{ y: 0, opacity: 1 }} animate={{ y: -70, opacity: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }}>
-                    +{quest.xpReward} XP
-                  </motion.div>
+            {/* Photo Upload */}
+            {proofType === 'photo' && (
+              <div className="qd-photo-area">
+                {proofImage ? (
+                  <div className="qd-photo-preview-wrap">
+                    <img src={proofImage.preview} alt="Proof" className="qd-photo-img" />
+                    <div className="qd-photo-actions">
+                      <span className="qd-photo-name">📎 {proofImage.fileName}</span>
+                      <button className="btn btn--ghost btn--sm" onClick={() => { setProofImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
+                        ✕ Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="qd-photo-drop">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleImageUpload}
+                      hidden
+                    />
+                    <span style={{ fontSize: 36 }}>📸</span>
+                    <span style={{ fontWeight: 600 }}>Tap to take photo or upload</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>JPG, PNG — max 5MB</span>
+                  </label>
                 )}
-              </AnimatePresence>
-            </motion.div>
-          ) : (
-            <motion.div className="quest-completed-banner" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-              <AppIcon name="trophy" size={32} color="var(--accent-xp)" />
-              <div>
-                <p className="quest-completed-title">Quest Complete</p>
-                <p className="quest-completed-xp">
-                  +{quest.xpReward} XP earned
-                  {completionResult?.leveledUp && ` — LEVEL UP to ${completionResult.newLevel}!`}
-                </p>
+                <p className="qd-photo-optional">💡 Photo is optional. You can submit without one and it'll be auto-approved.</p>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => navigate('/')}>Home</button>
+            )}
+
+            {/* Text Input */}
+            {proofType === 'text' && (
+              <textarea
+                className="input qd-text-input"
+                placeholder="Describe what you did..."
+                value={proofText}
+                onChange={e => setProofText(e.target.value)}
+                rows={4}
+                autoFocus
+              />
+            )}
+
+            {proofType === 'honor_system' && (
+              <p className="qd-honor-msg">This quest uses the honor system. Just click submit when you're done! 🤝</p>
+            )}
+
+            <button
+              className="btn btn--primary btn--full btn--lg"
+              style={{ marginTop: 16 }}
+              onClick={handleSubmit}
+              disabled={!canSubmit()}
+            >
+              {verifying ? (
+                <span>🤖 AI is verifying your proof...</span>
+              ) : (
+                <span>✅ Submit & Complete</span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ── Result ── */}
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              className={`qd-result ${result.verified ? 'qd-result--ok' : 'qd-result--fail'}`}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+            >
+              <span className="qd-result-icon">{result.verified ? '🎉' : '🤔'}</span>
+              <p className="qd-result-msg">{result.message}</p>
+              {result.verified && (result.earnedXP || 0) > 0 && (
+                <motion.p
+                  className="font-game" style={{ fontSize: 18, color: 'var(--xp-gold)', textShadow: '0 0 16px rgba(255,215,0,0.5)' }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, type: 'spring' }}
+                >
+                  +{result.earnedXP} XP
+                </motion.p>
+              )}
+              {result.streakMultiplier > 1 && (
+                <p style={{ fontSize: 12, color: 'var(--success)' }}>🔥 Streak bonus: {result.streakMultiplier}x</p>
+              )}
+              {result.hiddenQuestUnlocked && (
+                <motion.div
+                  className="qd-hidden-quest"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <span>🔮 HIDDEN QUEST UNLOCKED!</span>
+                  <p>{result.hiddenQuestUnlocked.title}</p>
+                </motion.div>
+              )}
+              <button className="btn btn--primary btn--full" style={{ marginTop: 16 }} onClick={() => navigate('/')}>
+                ← Back to Quests
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {levelUp && <LevelUpModal level={levelUp.level} title={levelUp.title} onClose={() => { setLevelUp(null); navigate('/'); }} />}
+      </AnimatePresence>
     </div>
   );
 }

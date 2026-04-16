@@ -7,14 +7,23 @@ const authRoutes = require('./routes/auth');
 const questRoutes = require('./routes/quests');
 const playerRoutes = require('./routes/player');
 const socialRoutes = require('./routes/social');
-const dataRoutes = require('./routes/data');
+const globalRoutes = require('./routes/global');
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
 
 // ── Global Middleware ──────────────────────────────────────────
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',  // Vite dev server
+    'http://localhost:4173',  // Vite preview
+    'http://localhost:3000',  // Same-origin
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json({ limit: '10mb' }));
 app.use(rateLimiter);
 
 // ── Health Check ───────────────────────────────────────────────
@@ -27,7 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/quests', questRoutes);
 app.use('/api/player', playerRoutes);
 app.use('/api/social', socialRoutes);
-app.use('/api/data', dataRoutes);
+app.use('/api/global', globalRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // ── 404 Handler ────────────────────────────────────────────────

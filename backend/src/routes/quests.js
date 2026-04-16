@@ -8,8 +8,6 @@ const {
 } = require('../controllers/questController');
 
 const router = express.Router();
-
-// All quest routes require authentication
 router.use(authMiddleware);
 
 router.get('/daily', getDailyQuests);

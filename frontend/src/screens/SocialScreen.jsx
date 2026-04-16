@@ -1,97 +1,212 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import BottomNav from '../components/BottomNav';
-import FriendCard from '../components/FriendCard';
-import ChallengeCard from '../components/ChallengeCard';
-import AppIcon from '../components/AppIcon';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSocial } from '../hooks/useSocial';
-import { mockIncomingChallenge } from '../data/mockData';
+import { usePlayer } from '../hooks/usePlayer';
+import BottomNav from '../components/BottomNav';
 import './SocialScreen.css';
 
-export default function SocialScreen() {
-  const { friends, loading, assignQuest } = useSocial();
-  const [challenge, setChallenge] = useState(mockIncomingChallenge);
-  const [challengeAccepted, setChallengeAccepted] = useState(false);
-  const [assignedTo, setAssignedTo] = useState(null);
+const CLASS_EMOJIS = { Warrior: '⚔️', Scholar: '📚', Social: '🗣️', Explorer: '🧭' };
 
-  const handleAssignQuest = async (friend) => {
-    await assignQuest(friend.id, 'Custom Quest', 'A challenge from your ally!', 100);
-    setAssignedTo(friend.username || friend.name);
-    setTimeout(() => setAssignedTo(null), 2000);
+export default function SocialScreen() {
+  const { friends, incomingQuests, loading, assignQuest, addFriend, acceptIncomingQuest } = useSocial();
+  const { player } = usePlayer();
+  const [friendCode, setFriendCode] = useState('');
+  const [addMsg, setAddMsg] = useState({ type: '', text: '' });
+  const [showAssign, setShowAssign] = useState(null);
+  const [questTitle, setQuestTitle] = useState('');
+  const [questDesc, setQuestDesc] = useState('');
+  const [sentMsg, setSentMsg] = useState('');
+
+  const handleAddFriend = async () => {
+    if (!friendCode.trim()) return;
+    setAddMsg({ type: '', text: '' });
+    try {
+      const result = await addFriend(friendCode.trim());
+      setAddMsg({ type: 'ok', text: `Added ${result.friend?.name || 'friend'}! 🎉` });
+      setFriendCode('');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Failed to add friend';
+      setAddMsg({ type: 'err', text: msg });
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="screen social-screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="font-mono" style={{ color: 'var(--text-dim)', fontSize: 11 }}>// LOADING ALLIES...</p>
-        <BottomNav />
-      </div>
-    );
-  }
+  const handleAssign = async (friendId, friendName) => {
+    if (!questTitle.trim()) return;
+    try {
+      await assignQuest(friendId, questTitle, questDesc || `A challenge from ${player?.name || 'a friend'}!`, 50, 'social');
+      setSentMsg(`⚔️ Quest sent to ${friendName}!`);
+      setShowAssign(null);
+      setQuestTitle('');
+      setQuestDesc('');
+      setTimeout(() => setSentMsg(''), 3000);
+    } catch (err) {
+      alert('Failed to send quest: ' + (err?.response?.data?.message || err.message));
+    }
+  };
 
   return (
-    <div className="screen social-screen">
-      <div className="social-header">
-        <h1 className="screen-title">Guild &amp; Allies</h1>
-        <button className="btn btn-ghost btn-sm">
-          <AppIcon name="users" size={12} /> Add Ally
-        </button>
+    <div className="social-screen">
+      <h1 className="page-title">⚔️ Social Hub</h1>
+
+      {/* Your Friend Code */}
+      {player?.friendCode && (
+        <div className="your-code-card">
+          <span className="yc-label">Your Friend Code</span>
+          <span className="yc-code font-game">{player.friendCode}</span>
+          <span className="yc-hint">Share this code so friends can add you!</span>
+        </div>
+      )}
+
+      {/* Add Friend */}
+      <div className="add-friend-section">
+        <h3 className="section-title">Add a Friend</h3>
+        <div className="add-friend-row">
+          <input
+            className="input"
+            placeholder="Enter friend code..."
+            value={friendCode}
+            onChange={e => setFriendCode(e.target.value.toUpperCase())}
+            maxLength={8}
+            style={{ flex: 1, textTransform: 'uppercase', letterSpacing: 3, fontWeight: 700 }}
+          />
+          <button className="btn btn--primary" onClick={handleAddFriend} disabled={!friendCode.trim()}>
+            Add
+          </button>
+        </div>
+        {addMsg.text && (
+          <p className={`add-msg ${addMsg.type === 'err' ? 'add-msg--err' : 'add-msg--ok'}`}>
+            {addMsg.type === 'err' ? '⚠️' : '✅'} {addMsg.text}
+          </p>
+        )}
       </div>
 
-      {/* Incoming duel */}
-      {!challengeAccepted && challenge && (
-        <div className="social-section">
-          <div className="section-header">
-            <div className="section-title-row">
-              <AppIcon name="swords" size={11} color="var(--accent-chaos)" />
-              <span className="section-title" style={{ color: 'var(--accent-chaos)' }}>Incoming Duel</span>
-            </div>
+      {/* Sent confirmation */}
+      <AnimatePresence>
+        {sentMsg && (
+          <motion.div
+            className="sent-toast"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            {sentMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Incoming Challenges */}
+      {incomingQuests.length > 0 && (
+        <div className="incoming-section">
+          <h3 className="section-title">📬 Incoming Challenges ({incomingQuests.length})</h3>
+          <div className="incoming-list">
+            {incomingQuests.map(quest => (
+              <motion.div key={quest.id} className="incoming-card" layout>
+                <div className="ic-info">
+                  <span className="ic-from">From: {quest.assignedByName || 'A Friend'}</span>
+                  <h4 className="ic-title">{quest.title}</h4>
+                  {quest.description && <p className="ic-desc">{quest.description}</p>}
+                  <span className="ic-xp font-game">⚡ {quest.xp_reward || 50} XP</span>
+                </div>
+                <div className="ic-actions">
+                  <button className="btn btn--primary btn--sm" onClick={() => acceptIncomingQuest(quest.id)}>
+                    ✅ Accept
+                  </button>
+                </div>
+              </motion.div>
+            ))}
           </div>
-          <ChallengeCard
-            challenge={challenge}
-            onAccept={() => setChallengeAccepted(true)}
-            onDecline={() => setChallenge(null)}
-          />
         </div>
       )}
 
-      {challengeAccepted && (
-        <motion.div className="challenge-accepted-notice" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
-          <AppIcon name="swords" size={16} color="var(--accent-success)" />
-          <div>
-            <p style={{ fontWeight: 800, fontSize: 13 }}>Duel Accepted</p>
-            <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Wake up at 6 AM — you got this.</p>
-          </div>
-          <span className="badge badge-xp">+800 XP</span>
-        </motion.div>
-      )}
+      {/* Friends List */}
+      <h3 className="section-title" style={{ marginTop: 24 }}>👥 Friends ({friends.length})</h3>
 
-      {/* Assign toast */}
-      {assignedTo && (
-        <motion.div className="assign-toast" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-          <AppIcon name="send" size={11} /> Quest sent to {assignedTo}
-        </motion.div>
-      )}
-
-      {/* Allies */}
-      <div className="social-section">
-        <div className="section-header">
-          <div className="section-title-row">
-            <AppIcon name="shield" size={11} color="var(--text-dim)" />
-            <span className="section-title">Your Allies</span>
-          </div>
-          <span className="allies-count">{friends.length} active</span>
+      {loading ? (
+        <div className="flex justify-center" style={{ padding: 32 }}>
+          <div className="loading-dots"><span/><span/><span/></div>
         </div>
-        <div className="allies-list">
+      ) : friends.length === 0 ? (
+        <div className="empty-friends">
+          <span style={{ fontSize: 36 }}>🤝</span>
+          <p>No friends yet</p>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>Share your friend code to connect!</p>
+        </div>
+      ) : (
+        <div className="friends-list">
           {friends.map((friend, i) => (
-            <motion.div key={friend.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}>
-              <FriendCard friend={friend} onAssignQuest={handleAssignQuest} />
+            <motion.div
+              key={friend.friendId}
+              className="friend-card"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <div className="fc-left">
+                <span className="fc-avatar">{CLASS_EMOJIS[friend.class] || '🧭'}</span>
+                <div className="fc-info">
+                  <span className="fc-name">{friend.name}</span>
+                  <div className="fc-meta">
+                    <span className="font-game" style={{ fontSize: 8, color: 'var(--xp-gold)' }}>LVL {friend.level}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{friend.title || ''}</span>
+                    {friend.streak > 0 && <span style={{ fontSize: 11 }}>🔥{friend.streak}</span>}
+                  </div>
+                </div>
+              </div>
+              <button className="btn btn--ghost btn--sm" onClick={() => setShowAssign(friend)}>
+                ⚔️ Challenge
+              </button>
             </motion.div>
           ))}
         </div>
-      </div>
+      )}
 
-      <BottomNav />
+      {/* Assign Quest Modal */}
+      <AnimatePresence>
+        {showAssign && (
+          <motion.div className="modal-overlay" onClick={() => setShowAssign(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              className="modal-box"
+              onClick={e => e.stopPropagation()}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="modal-title">⚔️ Send {showAssign.name} a Quest!</h3>
+              <p className="modal-subtitle">Challenge your friend to do something awesome</p>
+              <input
+                className="input"
+                placeholder="Quest title (e.g. 'Talk to 3 strangers')"
+                value={questTitle}
+                onChange={e => setQuestTitle(e.target.value)}
+                autoFocus
+                style={{ marginTop: 16 }}
+              />
+              <textarea
+                className="input"
+                placeholder="Description (optional)"
+                value={questDesc}
+                onChange={e => setQuestDesc(e.target.value)}
+                rows={3}
+                style={{ marginTop: 8 }}
+              />
+              <div className="modal-actions">
+                <button className="btn btn--ghost" onClick={() => setShowAssign(null)}>Cancel</button>
+                <button
+                  className="btn btn--primary"
+                  style={{ flex: 1 }}
+                  onClick={() => handleAssign(showAssign.friendId, showAssign.name)}
+                  disabled={!questTitle.trim()}
+                >
+                  ⚔️ Send Quest
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div style={{ height: 90 }} />
+      <BottomNav active="social" />
     </div>
   );
 }

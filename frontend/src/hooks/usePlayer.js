@@ -1,10 +1,30 @@
 /**
- * usePlayer — fetches player stats from backend.
- * Falls back to mock data if API is unavailable (demo mode).
+ * usePlayer — fetches full player stats from backend.
+ * Returns clean empty state for new users instead of mock data.
  */
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
-import { mockPlayer } from '../data/mockData';
+
+const EMPTY_PLAYER = {
+  name: 'Adventurer',
+  level: 1,
+  xp: 0,
+  xpToNextLevel: 500,
+  title: 'The Awakening',
+  class: 'Explorer',
+  streak: 0,
+  questsCompleted: 0,
+  completionRate: 0,
+  strongestCategory: null,
+  mostAvoidedCategory: null,
+  categoryStats: {},
+  weeklyXP: [],
+  tagline: '',
+  villainModeActive: false,
+  avoidancePatterns: [],
+  goals: [],
+  friendCode: '',
+};
 
 export function usePlayer() {
   const [player, setPlayer] = useState(null);
@@ -16,22 +36,11 @@ export function usePlayer() {
     setError(null);
     try {
       const { data } = await api.get('/player/stats');
-      setPlayer({
-        name: data.name || 'Adventurer',
-        level: data.level || 1,
-        xp: data.xp || 0,
-        maxXp: data.xpToNextLevel ? data.xp + data.xpToNextLevel : 500,
-        streak: data.streak || 0,
-        class: data.class || 'Explorer',
-        totalQuestsCompleted: data.totalQuestsCompleted || 0,
-        totalXpEarned: data.xp || 0, // approximate
-        completionRate: data.completionRate || 0,
-        strongestCategory: data.strongestCategory,
-        mostAvoidedCategory: data.mostAvoidedCategory,
-      });
+      setPlayer(data);
     } catch (err) {
-      console.warn('Player API unavailable, using mock data:', err.message);
-      setPlayer(mockPlayer);
+      console.warn('Player API unavailable:', err.message || err);
+      // Show clean empty state for new users — NOT fake mock data
+      setPlayer(EMPTY_PLAYER);
       setError(err.message);
     } finally {
       setLoading(false);

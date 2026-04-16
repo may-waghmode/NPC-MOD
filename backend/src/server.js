@@ -6,5 +6,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🎮 NPC Mode Backend running on port ${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`   AI Engine:   ${process.env.AI_ENGINE_URL || 'http://localhost:5001'}\n`);
+  console.log(`   Gemini AI:   ${process.env.GEMINI_API_KEY ? '✅ configured' : '⚠️  not set (mock quests)'}`);
+  console.log(`   Redis:       ${process.env.UPSTASH_REDIS_REST_URL ? '✅ configured' : '⚠️  not set (no cache)'}\n`);
 });

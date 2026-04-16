@@ -1,42 +1,29 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { HiHome, HiUsers, HiChartBar, HiUser } from 'react-icons/hi';
-import { HiOutlineHome, HiOutlineUsers, HiOutlineChartBar, HiOutlineUser } from 'react-icons/hi';
-import { RiSunFill, RiMoonFill } from 'react-icons/ri';
-import { useTheme } from '../hooks/useTheme';
+import { useNavigate } from 'react-router-dom';
 import './BottomNav.css';
 
 const NAV_ITEMS = [
-  { path: '/',        label: 'Home',    Icon: HiHome,      OutlineIcon: HiOutlineHome },
-  { path: '/social',  label: 'Social',  Icon: HiUsers,     OutlineIcon: HiOutlineUsers },
-  { path: '/stats',   label: 'Stats',   Icon: HiChartBar,  OutlineIcon: HiOutlineChartBar },
-  { path: '/profile', label: 'Profile', Icon: HiUser,      OutlineIcon: HiOutlineUser },
+  { id: 'home', icon: '🏠', label: 'Home', path: '/' },
+  { id: 'social', icon: '👥', label: 'Social', path: '/social' },
+  { id: 'stats', icon: '📊', label: 'Stats', path: '/stats' },
+  { id: 'profile', icon: '👤', label: 'Profile', path: '/profile' },
 ];
 
-export default function BottomNav() {
-  const location = useLocation();
+export default function BottomNav({ active }) {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <nav className="bottom-nav">
-      <div className="bottom-nav__inner">
-        {NAV_ITEMS.map(({ path, label, Icon, OutlineIcon }) => {
-          const isActive = location.pathname === path;
-          return (
-            <button key={path} className={`bottom-nav__item ${isActive ? 'active' : ''}`} onClick={() => navigate(path)} id={`nav-${label.toLowerCase()}`}>
-              {isActive && (
-                <motion.div layoutId="nav-active-bar" className="nav-active-bar" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />
-              )}
-              {isActive ? <Icon className="nav-icon" /> : <OutlineIcon className="nav-icon" />}
-              <span className="nav-label">{label}</span>
-            </button>
-          );
-        })}
-        <button className="bottom-nav__theme-toggle" onClick={toggleTheme} title="Toggle theme">
-          {theme === 'dark' ? <RiSunFill size={15} /> : <RiMoonFill size={15} />}
+      {NAV_ITEMS.map(item => (
+        <button
+          key={item.id}
+          className={`bottom-nav-item ${active === item.id ? 'bottom-nav-item--active' : ''}`}
+          onClick={() => navigate(item.path)}
+        >
+          <span className="bottom-nav-icon">{item.icon}</span>
+          <span className="bottom-nav-label">{item.label}</span>
+          {active === item.id && <span className="bottom-nav-glow" />}
         </button>
-      </div>
+      ))}
     </nav>
   );
 }

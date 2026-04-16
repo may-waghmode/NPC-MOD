@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from './hooks/useTheme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -13,16 +12,17 @@ function AppRoutes() {
   const { user, loading, isNewUser } = useAuth();
   const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
 
-  // Show nothing while Firebase checks auth state
   if (loading) {
     return (
-      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh' }}>
-        <p className="font-mono" style={{ color: 'var(--text-dim)', fontSize: 11 }}>// LOADING...</p>
+      <div className="app-shell loading-screen">
+        <div className="loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <p className="font-game" style={{ color: 'var(--text-dim)', fontSize: 10 }}>LOADING...</p>
       </div>
     );
   }
 
-  // Not logged in and not demo mode → show login
   if (!user && !isDemo) {
     return (
       <div className="app-shell">
@@ -31,7 +31,6 @@ function AppRoutes() {
     );
   }
 
-  // Authenticated or demo mode → show app
   return (
     <div className="app-shell">
       <Routes>
@@ -57,12 +56,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
