@@ -27,16 +27,21 @@ function formatUser(doc, rank, isYou = false) {
  */
 async function getPublicLeaderboard(req, res, next) {
   try {
-    // Get ALL onboarded users sorted by XP
+    // Get users — fetch all and sort in code (avoids Firestore composite index requirement)
     const snapshot = await db.collection('users')
-      .where('onboardingComplete', '==', true)
-      .orderBy('xp', 'desc')
-      .limit(200)
+      .limit(500)
       .get();
+
+    // Filter onboarded users and sort by XP in code
+    const onboardedDocs = snapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.onboardingComplete === true;
+    });
+    onboardedDocs.sort((a, b) => (b.data().xp || 0) - (a.data().xp || 0));
 
     const allUsers = [];
     let rank = 1;
-    for (const doc of snapshot.docs) {
+    for (const doc of onboardedDocs) {
       allUsers.push({ ...formatUser(doc, rank), docId: doc.id });
       rank++;
     }
