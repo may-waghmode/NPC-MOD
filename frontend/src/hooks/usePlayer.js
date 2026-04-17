@@ -1,9 +1,10 @@
 /**
  * usePlayer — fetches full player stats from backend.
- * Returns clean empty state for new users instead of mock data.
+ * If user doc doesn't exist (404), triggers re-verify to create it.
  */
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
+import { auth } from '../firebase/config';
 
 const EMPTY_PLAYER = {
   name: 'Adventurer',
@@ -39,7 +40,23 @@ export function usePlayer() {
       setPlayer(data);
     } catch (err) {
       console.warn('Player API unavailable:', err.message || err);
-      // Show clean empty state for new users — NOT fake mock data
+
+      // If 404 "User not found", try to re-verify to create the user doc
+      if (err.status === 404 && auth.currentUser) {
+        try {
+          console.log('🔄 User not found — attempting to create via /auth/verify...');
+          const token = await auth.currentUser.getIdToken(true); // force refresh
+          await api.post('/auth/verify', { idToken: token });
+          // Retry fetching stats after verify creates the doc
+          const { data } = await api.get('/player/stats');
+          setPlayer(data);
+          setLoading(false);
+          return;
+        } catch (retryErr) {
+          console.warn('Re-verify failed:', retryErr.message);
+        }
+      }
+
       setPlayer(EMPTY_PLAYER);
       setError(err.message);
     } finally {

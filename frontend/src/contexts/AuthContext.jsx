@@ -27,14 +27,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser);
+        // IMPORTANT: Verify with backend FIRST to create user doc,
+        // THEN set user state. This prevents the race condition where
+        // HomeScreen tries to fetch /player/stats before the user doc exists.
         try {
-          const token = await firebaseUser.getIdToken();
+          const token = await firebaseUser.getIdToken(true);
           const { data } = await api.post('/auth/verify', { idToken: token });
           setIsNewUser(data.isNewUser);
         } catch (err) {
           console.warn('Backend verify failed (offline mode?):', err.message || err);
         }
+        // Now set the user — HomeScreen will mount AFTER verify has run
+        setUser(firebaseUser);
       } else {
         setUser(null);
         setIsNewUser(false);
