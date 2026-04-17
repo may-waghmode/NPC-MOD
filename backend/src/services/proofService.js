@@ -1,28 +1,79 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const axios = require('axios');
 
 // Track retry state
 let lastRetryAfter = 0;
 let lastErrorTime = 0;
 
 /**
- * Verify quest proof using Gemini AI (vision model).
- * Supports multiple photos — sends all images to AI for analysis.
- *
- * @param {string} questDescription - What the quest asked the user to do
- * @param {string} proofInstructions - What proof was required
- * @param {string} proofType - "photo" | "text" | "honor_system"
- * @param {object} proofData - { images?: [{base64, mimeType}], imageBase64?, imageMimeType? }
- * @returns {{ verified: boolean, message: string }}
+ * Call Groq Vision API.
+ */
+async function callGroqVision(prompt, images, genConfig = {}) {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set.');
+
+  // Build the message content array
+  const content = [{ type: 'text', text: prompt }];
+
+  // Add each image
+  for (const img of images) {
+    // Determine mimeType if not provided (default to jpeg)
+    let mimeType = img.mimeType || 'image/jpeg';
+    
+    // Ensure base64 string doesn't already have the data URI prefix before adding it
+    let base64Data = img.base64;
+    if (base64Data.startsWith('data:')) {
+      const parts = base64Data.split(',');
+      base64Data = parts[1];
+      mimeType = parts[0].split(':')[1].split(';')[0];
+    }
+    
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${base64Data}`
+      }
+    });
+  }
+
+  const body = {
+    model: 'llama-3.2-11b-vision-preview',
+    messages: [
+      {
+        role: 'user',
+        content: content
+      }
+    ],
+    temperature: 0.3,
+    max_tokens: 150,
+    response_format: { type: 'json_object' }
+  };
+
+  try {
+    const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+      },
+      timeout: 30000,
+    });
+    return response.data?.choices?.[0]?.message?.content || '';
+  } catch (err) {
+    const status = err.response?.status;
+    const data = err.response?.data;
+    const msg = data?.error?.message || err.message;
+    console.error(`Groq Vision API Error (${status}): ${msg}`);
+    throw new Error(msg);
+  }
+}
+
+/**
+ * Verify quest proof using Groq AI (Llama 3.2 Vision).
  */
 async function verifyProof(questDescription, proofInstructions, proofType, proofData) {
-  // Honor system — always pass
   if (proofType === 'honor_system') {
     return { verified: true, message: 'Quest completed on your honor. We trust you! ⚔️' };
   }
 
-  // Collect all images (support both single and multiple)
   const images = [];
   if (proofData?.images && Array.isArray(proofData.images)) {
     for (const img of proofData.images) {
@@ -32,32 +83,23 @@ async function verifyProof(questDescription, proofInstructions, proofType, proof
     images.push({ base64: proofData.imageBase64, mimeType: proofData.imageMimeType || 'image/jpeg' });
   }
 
-  // If no photos were uploaded, reject
   if (proofType === 'photo' && images.length === 0) {
     return { verified: false, message: 'You need to upload at least one photo as proof! 📸' };
   }
 
-  // If no API key, auto-approve with note
-  if (!GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return { verified: true, message: 'Photo accepted! (AI verification not set up yet) ✅' };
   }
 
-  // Check if we're in a rate-limit cooldown
   const now = Date.now();
   if (lastRetryAfter > 0 && (now - lastErrorTime) < lastRetryAfter * 1000) {
     const waitSec = Math.ceil((lastRetryAfter * 1000 - (now - lastErrorTime)) / 1000);
-    return {
-      verified: false,
-      message: `AI is busy right now. Please try again in ${waitSec} seconds. ⏳`,
-    };
+    return { verified: false, message: `AI is busy right now. Please try again in ${waitSec} seconds. ⏳` };
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-
     const photoCount = images.length;
-    const prompt = `You are checking if a user completed a quest in a fun life-improvement app.
+    const promptText = `You are checking if a user completed a quest in a fun life-improvement app.
 
 QUEST: ${questDescription}
 WHAT THEY SHOULD SHOW: ${proofInstructions}
@@ -66,66 +108,34 @@ The user uploaded ${photoCount} photo${photoCount > 1 ? 's' : ''}.
 
 IMPORTANT RULES:
 - Be VERY GENEROUS. If ANY of the photos look even slightly related to the quest, APPROVE it.
-- If the photo shows the person did SOMETHING related (even loosely), approve it.
-- Only REJECT if the photo is totally random and has NOTHING to do with the quest at all (like a blank screen, random meme, or completely off-topic image).
-- When in doubt, APPROVE. Give the user the benefit of the doubt.
-- Keep your message SHORT, simple, and friendly (1 sentence max).
-- Use simple everyday words, no complicated language.
-- If approved: say something positive and fun.
-- If rejected: be super nice, explain in simple words what kind of photo would work better.
+- Only REJECT if the photo is totally random and has NOTHING to do with the quest at all.
+- When in doubt, APPROVE.
+- Keep your message SHORT and friendly (1 sentence max).
+- If approved: say something positive. If rejected: be super nice.
 
-Return ONLY this JSON format: { "verified": true/false, "message": "your short message" }`;
+Return ONLY this valid JSON format: { "verified": true/false, "message": "your short message" }`;
 
-    const parts = [{ text: prompt }];
-
-    // Add all images
-    for (const img of images) {
-      parts.push({
-        inlineData: {
-          mimeType: img.mimeType,
-          data: img.base64,
-        },
-      });
-    }
-
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 150,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    // Reset rate limit tracking on success
     lastRetryAfter = 0;
     lastErrorTime = 0;
 
-    const text = result.response.text();
+    const text = await callGroqVision(promptText, images);
+
     const data = JSON.parse(text);
     return {
       verified: !!data.verified,
-      message: data.message || (data.verified ? 'Nice work! Photo looks good! 🎉' : 'That photo doesn\'t seem to match this quest. Try again with a related photo! 📸'),
+      message: data.message || (data.verified ? 'Nice work! 🎉' : 'Try again with a related photo! 📸'),
     };
   } catch (err) {
     console.warn('⚠️  Proof verification failed:', err.message);
 
-    // Parse rate limit retry delay if present
     const retryMatch = err.message?.match(/retry in (\d+(?:\.\d+)?)/i);
     if (retryMatch) {
       lastRetryAfter = Math.ceil(parseFloat(retryMatch[1]));
       lastErrorTime = Date.now();
-      return {
-        verified: false,
-        message: `AI is busy right now. Wait ${lastRetryAfter} seconds and try again! ⏳`,
-      };
+      return { verified: false, message: `AI is busy. Wait ${lastRetryAfter} seconds and try again! ⏳` };
     }
 
-    // On other errors, auto-approve (be generous)
-    return {
-      verified: true,
-      message: 'Photo accepted! (AI had a hiccup but we trust you) ✅',
-    };
+    return { verified: true, message: 'Photo accepted! (AI had a hiccup but we trust you) ✅' };
   }
 }
 

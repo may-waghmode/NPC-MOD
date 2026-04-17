@@ -1,6 +1,8 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const axios = require('axios');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ── Mock / Fallback Quests ─────────────────────────────────────
 const MOCK_QUESTS = [
@@ -160,12 +162,48 @@ function enforcePhotoProof(quest) {
 }
 
 /**
- * Generate daily quests using Gemini API.
+ * Call Groq REST API directly for inference.
+ */
+async function callGroq(messages, options = {}) {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set.');
+
+  const body = {
+    model: 'llama-3.3-70b-versatile',
+    messages,
+    temperature: options.temperature || 0.9,
+    max_tokens: options.max_tokens || 2048,
+  };
+
+  if (options.response_format === 'json_object') {
+    body.response_format = { type: 'json_object' };
+  }
+
+  try {
+    const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+      },
+      timeout: 30000,
+    });
+    return response.data?.choices?.[0]?.message?.content || '';
+  } catch (err) {
+    const status = err.response?.status;
+    const data = err.response?.data;
+    const msg = data?.error?.message || err.message;
+    console.error(`Groq API Error (${status}): ${msg}`);
+    throw new Error(msg);
+  }
+}
+
+/**
+ * Generate daily quests using Groq API (Llama 3).
  * Falls back to mock quests if API key not set or call fails.
  */
 async function generateQuests(userProfile, behaviorLog = []) {
-  if (!GEMINI_API_KEY) {
-    console.warn('⚠️  GEMINI_API_KEY not set. Using mock quests.');
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('⚠️  GROQ_API_KEY not set. Using mock quests.');
     return {
       daily_quests: MOCK_QUESTS.map(enforcePhotoProof),
       mega_quest: enforcePhotoProof(MOCK_MEGA_QUEST),
@@ -173,37 +211,32 @@ async function generateQuests(userProfile, behaviorLog = []) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const systemPrompt = buildSystemPrompt();
+    const userPrompt = 'USER DATA:\n' + buildUserMessage(userProfile, behaviorLog);
+    
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ];
 
-    const result = await model.generateContent({
-      contents: [
-        { role: 'user', parts: [{ text: buildSystemPrompt() + '\n\nUSER DATA:\n' + buildUserMessage(userProfile, behaviorLog) }] },
-      ],
-      generationConfig: {
-        temperature: 0.9,
-        maxOutputTokens: 2048,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const text = result.response.text();
+    const text = await callGroq(messages, { temperature: 0.9, max_tokens: 2048, response_format: 'json_object' });
     const data = JSON.parse(text);
 
     if (data && Array.isArray(data.daily_quests) && data.daily_quests.length >= 3) {
+      console.log('✅ Groq (Llama 3) returned personalized quests!');
       return {
         daily_quests: data.daily_quests.slice(0, 4).map(enforcePhotoProof),
         mega_quest: enforcePhotoProof(data.mega_quest || MOCK_MEGA_QUEST),
       };
     }
 
-    console.warn('⚠️  Gemini returned unexpected format, using mock quests.');
+    console.warn('⚠️  Groq returned unexpected format, using mock quests.');
     return {
       daily_quests: MOCK_QUESTS.map(enforcePhotoProof),
       mega_quest: enforcePhotoProof(MOCK_MEGA_QUEST),
     };
   } catch (err) {
-    console.warn(`⚠️  Gemini quest generation failed (${err.message}). Using mock quests.`);
+    console.warn(`⚠️  Groq quest generation failed (${err.message}). Using mock quests.`);
     return {
       daily_quests: MOCK_QUESTS.map(enforcePhotoProof),
       mega_quest: enforcePhotoProof(MOCK_MEGA_QUEST),
@@ -215,32 +248,23 @@ async function generateQuests(userProfile, behaviorLog = []) {
  * Generate a personalized character tagline from onboarding answers.
  */
 async function generateTagline(userProfile) {
-  if (!GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     const avoidance = userProfile.avoidanceAnswer || 'comfort zone';
     return `The ${userProfile.class || 'Explorer'} Who Avoids ${avoidance} — but not for long.`;
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-
-    const result = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{
-          text: `Generate a short, witty RPG character tagline (max 15 words) for this player:
+    const prompt = `Generate a short, witty RPG character tagline (max 15 words) for this player:
 Class: ${userProfile.class}
 Goals: ${(userProfile.goals || []).join(', ')}
 Avoidance: ${userProfile.avoidanceAnswer || 'unknown'}
 Personality: ${userProfile.personalityType || 'ambivert'}
 
-Return ONLY the tagline text, nothing else. Make it feel like a video game character description. Reference their avoidance humorously.`
-        }],
-      }],
-      generationConfig: { temperature: 1.0, maxOutputTokens: 50 },
-    });
+Return ONLY the tagline text, nothing else. Make it feel like a video game character description. Reference their avoidance humorously.`;
 
-    return result.response.text().trim().replace(/^["']|["']$/g, '');
+    const messages = [{ role: 'user', content: prompt }];
+    const text = await callGroq(messages, { temperature: 1.0, max_tokens: 50 });
+    return text.trim().replace(/^["']|["']$/g, '');
   } catch (err) {
     const avoidance = userProfile.avoidanceAnswer || 'comfort zone';
     return `The ${userProfile.class || 'Explorer'} Who Avoids ${avoidance} — but not for long.`;

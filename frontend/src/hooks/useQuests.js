@@ -12,11 +12,12 @@ export function useQuests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchQuests = useCallback(async () => {
+  const fetchQuests = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await api.get('/quests/daily');
+      const url = forceRefresh ? '/quests/daily?refresh=true' : '/quests/daily';
+      const { data } = await api.get(url);
       setQuests(data.daily_quests || []);
       setMegaQuest(data.mega_quest || null);
       setChallenges(data.challenges || []);
@@ -30,6 +31,8 @@ export function useQuests() {
       setLoading(false);
     }
   }, []);
+
+  const refreshQuests = useCallback(() => fetchQuests(true), [fetchQuests]);
 
   useEffect(() => { fetchQuests(); }, [fetchQuests]);
 
@@ -80,5 +83,5 @@ export function useQuests() {
     }
   }, []);
 
-  return { quests, challenges, megaQuest, loading, error, refetch: fetchQuests, completeQuest, skipQuest, acceptChallenge };
+  return { quests, challenges, megaQuest, loading, error, refetch: fetchQuests, refreshQuests, completeQuest, skipQuest, acceptChallenge };
 }

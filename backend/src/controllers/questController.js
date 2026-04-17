@@ -57,11 +57,29 @@ async function expirePreviousDayQuests(userId) {
 async function getDailyQuests(req, res, next) {
   try {
     const { userId } = req;
-    console.log(`\n🎯 getDailyQuests called for user: ${userId}`);
+    const forceRefresh = req.query.refresh === 'true';
+    console.log(`\n🎯 getDailyQuests called for user: ${userId}${forceRefresh ? ' (FORCE REFRESH)' : ''}`);
 
     // 0. Expire quests from previous days so new ones can be generated
     const expiredCount = await expirePreviousDayQuests(userId);
     console.log(`   Expired ${expiredCount} old quests`);
+
+    // 0b. If force refresh requested, expire ALL active quests to regenerate with AI
+    if (forceRefresh) {
+      const allActive = await querySubCollection(userId, 'quests', {
+        where: { field: 'status', op: '==', value: 'active' },
+      });
+      let refreshed = 0;
+      for (const quest of allActive) {
+        if (!quest.assignedBy || quest.assignedBy === 'self' || quest.assignedBy === 'system') {
+          await updateSubDoc(userId, 'quests', quest.id, { status: 'expired' });
+          refreshed++;
+        }
+      }
+      console.log(`   🔄 Force-refreshed ${refreshed} existing quests`);
+      const today = new Date().toISOString().slice(0, 10);
+      await redis.del(`quests:${userId}:${today}`);
+    }
 
     // 1. Check for existing active quests first
     const existingQuests = await querySubCollection(userId, 'quests', {
@@ -136,8 +154,8 @@ async function getDailyQuests(req, res, next) {
     });
     console.log(`   📊 Behavior log entries: ${behaviorLog.length}`);
 
-    // 5. Call Gemini AI to generate personalized quests
-    console.log(`   🤖 Calling Gemini AI to generate personalized quests...`);
+    // 5. Call Groq AI to generate personalized quests
+    console.log(`   🤖 Calling Groq AI to generate personalized quests...`);
     const { daily_quests, mega_quest } = await generateQuests(userProfile, behaviorLog);
     console.log(`   🤖 AI returned ${daily_quests.length} quests. First title: "${daily_quests[0]?.title || 'N/A'}"`);
 
