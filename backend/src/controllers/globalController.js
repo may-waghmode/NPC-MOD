@@ -20,11 +20,25 @@ async function getMegaQuest(req, res, next) {
       const endTime = data.endTime?.toDate ? data.endTime.toDate() : new Date(data.endTime);
 
       if (endTime > now) {
+        // Check if requesting user already accepted (if userId present)
+        let accepted = false;
+        if (req.userId) {
+          const userMegaRef = db.collection('users').doc(req.userId).collection('mega_quest').doc('current');
+          const userMegaDoc = await userMegaRef.get();
+          if (userMegaDoc.exists && userMegaDoc.data().accepted) {
+            accepted = true;
+          }
+        }
+
         return res.json({
           ...data,
+          id: 'mega_quest',
           endTime: endTime.toISOString(),
           startTime: data.startTime?.toDate ? data.startTime.toDate().toISOString() : data.startTime,
           timeRemaining: endTime.getTime() - now.getTime(),
+          proof_type: 'photo',
+          proof_instructions: 'Take a photo as evidence of conquering the boss battle!',
+          accepted,
         });
       }
     }
@@ -71,6 +85,8 @@ async function getMegaQuest(req, res, next) {
       startTime: Timestamp.now(),
       endTime: Timestamp.fromDate(nextMonday),
       participantCount: 0,
+      proof_type: 'photo',
+      proof_instructions: 'Take a photo as evidence of conquering the boss battle!',
       createdAt: Timestamp.now(),
     };
 
@@ -78,9 +94,11 @@ async function getMegaQuest(req, res, next) {
 
     res.json({
       ...newMegaQuest,
+      id: 'mega_quest',
       endTime: nextMonday.toISOString(),
       startTime: now.toISOString(),
       timeRemaining: nextMonday.getTime() - now.getTime(),
+      accepted: false,
     });
   } catch (err) {
     next(err);
@@ -89,10 +107,27 @@ async function getMegaQuest(req, res, next) {
 
 /**
  * POST /api/global/mega-quest/accept
+ * Only allows one accept per user per boss battle.
  */
 async function acceptMegaQuest(req, res, next) {
   try {
     const { userId } = req;
+
+    // Check if user already accepted this boss battle
+    const userMegaRef = db.collection('users').doc(userId).collection('mega_quest').doc('current');
+    const existingDoc = await userMegaRef.get();
+
+    if (existingDoc.exists && existingDoc.data().accepted) {
+      // Already accepted — return current data without incrementing
+      const ref = db.collection('global').doc('mega_quest');
+      const doc = await ref.get();
+      return res.json({
+        success: true,
+        alreadyAccepted: true,
+        participantCount: doc.exists ? doc.data().participantCount : 0,
+        message: 'You already accepted this boss battle!',
+      });
+    }
 
     // Increment participant count atomically
     const ref = db.collection('global').doc('mega_quest');
@@ -100,17 +135,21 @@ async function acceptMegaQuest(req, res, next) {
       participantCount: admin.firestore.FieldValue.increment(1),
     });
 
-    // Store user's acceptance
-    const userMegaRef = db.collection('users').doc(userId).collection('mega_quest').doc('current');
+    // Store user's acceptance with the mega quest's start time for tracking
+    const megaDoc = await ref.get();
+    const megaStartTime = megaDoc.data()?.startTime || Timestamp.now();
+
     await userMegaRef.set({
       accepted: true,
       completed: false,
       acceptedAt: Timestamp.now(),
+      megaQuestStartTime: megaStartTime, // to know which boss battle this belongs to
     }, { merge: true });
 
     const doc = await ref.get();
     res.json({
       success: true,
+      alreadyAccepted: false,
       participantCount: doc.data().participantCount,
     });
   } catch (err) {
@@ -120,12 +159,23 @@ async function acceptMegaQuest(req, res, next) {
 
 /**
  * POST /api/global/mega-quest/complete
+ * Requires photo proof.
  */
 async function completeMegaQuest(req, res, next) {
   try {
     const { userId } = req;
 
     const userMegaRef = db.collection('users').doc(userId).collection('mega_quest').doc('current');
+    const existingDoc = await userMegaRef.get();
+
+    if (!existingDoc.exists || !existingDoc.data().accepted) {
+      return res.status(400).json({ error: true, message: 'You must accept the boss battle first!' });
+    }
+
+    if (existingDoc.data().completed) {
+      return res.json({ success: true, message: 'You already completed this boss battle!' });
+    }
+
     await userMegaRef.update({
       completed: true,
       completedAt: Timestamp.now(),

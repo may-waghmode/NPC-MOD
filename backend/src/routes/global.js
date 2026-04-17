@@ -19,8 +19,8 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-// Mega quest is public (no auth needed for GET)
-router.get('/mega-quest', getMegaQuest);
+// Mega quest — optional auth so we can check if user already accepted
+router.get('/mega-quest', optionalAuth, getMegaQuest);
 
 // Leaderboard — public (optional auth for nearby rank)
 router.get('/leaderboard', optionalAuth, getPublicLeaderboard);

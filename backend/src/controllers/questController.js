@@ -14,16 +14,52 @@ const { verifyProof } = require('../services/proofService');
 const redis = require('../services/redisService');
 const { ValidationError, NotFoundError } = require('../middleware/errorHandler');
 
-const MAX_DAILY_QUESTS = 3;
+const MAX_DAILY_QUESTS = 4;
 const QUEST_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
 /**
+ * Expire active quests from previous days.
+ * Marks them as 'expired' so new ones can be generated today.
+ */
+async function expirePreviousDayQuests(userId) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const activeQuests = await querySubCollection(userId, 'quests', {
+    where: { field: 'status', op: '==', value: 'active' },
+  });
+
+  let expiredCount = 0;
+  for (const quest of activeQuests) {
+    // Skip friend-assigned quests (they don't expire daily)
+    if (quest.assignedBy && quest.assignedBy !== 'self' && quest.assignedBy !== 'system') {
+      continue;
+    }
+
+    const created = quest.createdAt?.toDate ? quest.createdAt.toDate() : new Date(quest.createdAt);
+    if (created < todayStart) {
+      await updateSubDoc(userId, 'quests', quest.id, { status: 'expired' });
+      expiredCount++;
+    }
+  }
+
+  if (expiredCount > 0) {
+    console.log(`Expired ${expiredCount} old quests for user ${userId}`);
+  }
+
+  return expiredCount;
+}
+
+/**
  * GET /api/quests/daily
- * Returns active quests. Only generates new ones if user has < MAX_DAILY_QUESTS active.
+ * Returns active quests. Only generates new ones if user has no active daily quests for today.
  */
 async function getDailyQuests(req, res, next) {
   try {
     const { userId } = req;
+
+    // 0. Expire quests from previous days so new ones can be generated
+    await expirePreviousDayQuests(userId);
 
     // 1. Check for existing active quests first
     const existingQuests = await querySubCollection(userId, 'quests', {
@@ -36,83 +72,89 @@ async function getDailyQuests(req, res, next) {
     });
     const challenges = pendingQuests.filter(q => q.assignedBy && q.assignedBy !== 'self' && q.assignedBy !== 'system');
 
-    // If user already has active quests, return them + pending challenges
-    if (existingQuests.length > 0) {
-      const daily = existingQuests.filter(q => q.category !== 'boss');
+    // Filter to today's daily quests (non-boss, non-friend-assigned)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayDailyQuests = existingQuests.filter(q => {
+      if (q.category === 'boss') return false;
+      if (q.assignedBy && q.assignedBy !== 'self' && q.assignedBy !== 'system') return false;
+      return true;
+    });
+
+    // Friend-assigned active quests (always show)
+    const friendQuests = existingQuests.filter(q => q.assignedBy && q.assignedBy !== 'self' && q.assignedBy !== 'system');
+
+    // If user already has today's daily quests, return them + pending challenges
+    if (todayDailyQuests.length > 0) {
       const mega = existingQuests.find(q => q.category === 'boss') || null;
-      return res.json({ daily_quests: daily, mega_quest: mega, challenges, cached: false });
+      return res.json({
+        daily_quests: [...todayDailyQuests, ...friendQuests],
+        mega_quest: mega,
+        challenges,
+        cached: false,
+      });
     }
 
     // 2. Check if user completed onboarding
     const userProfile = await getUser(userId);
     if (!userProfile || !userProfile.onboardingComplete) {
-      return res.json({ daily_quests: [], mega_quest: null, cached: false, message: 'Complete onboarding first!' });
+      return res.json({ daily_quests: friendQuests, mega_quest: null, challenges, cached: false, message: 'Complete onboarding first!' });
     }
 
-    // 3. Check Redis cache
-    const cacheKey = `quests:${userId}`;
+    // 3. Check Redis cache (keyed by userId + date so new day = new quests)
+    const today = new Date().toISOString().slice(0, 10);
+    const cacheKey = `quests:${userId}:${today}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
-      return res.json({ daily_quests: cached.daily_quests, mega_quest: cached.mega_quest, cached: true });
-    }
-
-    // 4. Check daily limit — count quests created today
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const allTodayQuests = await querySubCollection(userId, 'quests', {
-      orderBy: 'createdAt',
-      direction: 'desc',
-      limit: 20,
-    });
-    const todayQuests = allTodayQuests.filter(q => {
-      if (!q.createdAt) return false;
-      const created = q.createdAt.toDate ? q.createdAt.toDate() : new Date(q.createdAt);
-      return created >= todayStart;
-    });
-
-    if (todayQuests.length >= MAX_DAILY_QUESTS + 1) { // +1 for mega quest
       return res.json({
-        daily_quests: [],
-        mega_quest: null,
-        cached: false,
-        message: 'Daily quest limit reached. Come back tomorrow!',
+        daily_quests: [...(cached.daily_quests || []), ...friendQuests],
+        mega_quest: cached.mega_quest,
+        challenges,
+        cached: true,
       });
     }
 
-    // 5. Gather behavior log for AI personalization
+    // 4. Gather behavior log for AI personalization
     const behaviorLog = await querySubCollection(userId, 'behavior_log', {
       orderBy: 'timestamp',
       direction: 'desc',
       limit: 50,
     });
 
-    // 6. Call Gemini AI to generate quests
+    // 5. Call Gemini AI to generate personalized quests
     const { daily_quests, mega_quest } = await generateQuests(userProfile, behaviorLog);
 
-    // 7. Save quests to Firestore
+    // 6. Save quests to Firestore
     const savedQuests = [];
     for (const quest of daily_quests.slice(0, MAX_DAILY_QUESTS)) {
       const id = await addSubDoc(userId, 'quests', {
         ...quest,
+        proof_type: 'photo', // enforce photo proof
         status: 'active',
         assignedBy: 'self',
       });
-      savedQuests.push({ id, ...quest, status: 'active', assignedBy: 'self' });
+      savedQuests.push({ id, ...quest, proof_type: 'photo', status: 'active', assignedBy: 'self' });
     }
 
-    // Save mega quest
+    // Save mega quest (boss battle)
     const megaId = await addSubDoc(userId, 'quests', {
       ...mega_quest,
+      proof_type: 'photo', // enforce photo proof for boss too
       status: 'active',
       assignedBy: 'system',
     });
-    const savedMega = { id: megaId, ...mega_quest, status: 'active', assignedBy: 'system' };
+    const savedMega = { id: megaId, ...mega_quest, proof_type: 'photo', status: 'active', assignedBy: 'system' };
 
-    // 8. Cache result
+    // 7. Cache result (keyed by date)
     const cachePayload = { daily_quests: savedQuests, mega_quest: savedMega };
     await redis.set(cacheKey, cachePayload, QUEST_CACHE_TTL);
 
-    res.json({ daily_quests: savedQuests, mega_quest: savedMega, cached: false });
+    res.json({
+      daily_quests: [...savedQuests, ...friendQuests],
+      mega_quest: savedMega,
+      challenges,
+      cached: false,
+    });
   } catch (err) {
     next(err);
   }
@@ -120,6 +162,8 @@ async function getDailyQuests(req, res, next) {
 
 /**
  * POST /api/quests/complete
+ * Requires photo proof for all quests.
+ * Handles XP transfer for friend-assigned challenge quests.
  */
 async function completeQuest(req, res, next) {
   try {
@@ -134,11 +178,11 @@ async function completeQuest(req, res, next) {
       return res.json({ message: 'Quest already completed', verified: true, earnedXP: 0, leveledUp: false });
     }
 
-    // Verify proof
-    const effectiveProofType = proofType || quest.proof_type || 'honor_system';
+    // Enforce photo proof for all quests
+    const effectiveProofType = 'photo';
     const verification = await verifyProof(
       quest.description || quest.title,
-      quest.proof_instructions || 'Complete the quest.',
+      quest.proof_instructions || 'Take a photo as proof of completion.',
       effectiveProofType,
       proofData || {}
     );
@@ -149,12 +193,47 @@ async function completeQuest(req, res, next) {
 
     // Update quest
     const updateData = { status: 'completed', completedAt: Timestamp.now() };
-    if (proofData?.text) updateData.proofText = proofData.text;
     if (proofData?.imageUrl) updateData.proofUrl = proofData.imageUrl;
+    if (proofData?.imageBase64) updateData.hasPhotoProof = true;
     await updateSubDoc(userId, 'quests', questId, updateData);
 
-    // Add XP
-    const xpResult = await addXP(userId, quest.xp_reward || quest.xpReward || 50);
+    // Determine XP reward
+    const baseXpReward = quest.xp_reward || quest.xpReward || 50;
+
+    // Check if this is a friend-assigned challenge quest
+    const isFriendChallenge = quest.assignedBy && quest.assignedBy !== 'self' && quest.assignedBy !== 'system';
+
+    // Add XP to completer
+    const xpResult = await addXP(userId, baseXpReward);
+
+    // If friend challenge: deduct XP from the challenger (sender)
+    if (isFriendChallenge && quest.challengeXpReward) {
+      try {
+        const challenger = await getUser(quest.assignedBy);
+        if (challenger) {
+          const deductAmount = quest.challengeXpReward;
+          const newChallengerXP = Math.max(0, (challenger.xp || 0) - deductAmount);
+          await updateUser(quest.assignedBy, { xp: newChallengerXP });
+
+          // Notify the challenger that their friend completed the quest
+          await addSubDoc(quest.assignedBy, 'notifications', {
+            type: 'challenge_completed',
+            fromUserId: userId,
+            fromName: (await getUser(userId))?.name || 'A friend',
+            questTitle: quest.title,
+            xpDeducted: deductAmount,
+            message: `completed your challenge "${quest.title}"! You lost ${deductAmount} XP.`,
+            read: false,
+            createdAt: Timestamp.now(),
+          });
+
+          // Invalidate challenger's cache
+          await redis.del(`stats:${quest.assignedBy}`);
+        }
+      } catch (challengeErr) {
+        console.warn('Challenge XP transfer failed:', challengeErr.message);
+      }
+    }
 
     // Update streak
     const streakResult = await updateStreak(userId);
@@ -198,6 +277,8 @@ async function completeQuest(req, res, next) {
     }
 
     // Invalidate caches
+    const todayStr = new Date().toISOString().slice(0, 10);
+    await redis.del(`quests:${userId}:${todayStr}`);
     await redis.del(`quests:${userId}`);
     await redis.del(`stats:${userId}`);
 
@@ -234,6 +315,27 @@ async function skipQuest(req, res, next) {
 
     await updateSubDoc(userId, 'quests', questId, { status: 'skipped' });
 
+    // If this was a friend challenge, refund XP to the challenger
+    const isFriendChallenge = quest.assignedBy && quest.assignedBy !== 'self' && quest.assignedBy !== 'system';
+    if (isFriendChallenge && quest.challengeXpReward) {
+      // No XP was deducted at assignment time, so no refund needed
+      // But notify the challenger
+      try {
+        const user = await getUser(userId);
+        await addSubDoc(quest.assignedBy, 'notifications', {
+          type: 'challenge_declined',
+          fromUserId: userId,
+          fromName: user?.name || 'A friend',
+          questTitle: quest.title,
+          message: `declined your challenge "${quest.title}".`,
+          read: false,
+          createdAt: Timestamp.now(),
+        });
+      } catch (notifErr) {
+        console.warn('Decline notification failed:', notifErr.message);
+      }
+    }
+
     // Log behavior
     await addSubDoc(userId, 'behavior_log', {
       eventType: 'quest_skipped',
@@ -257,6 +359,8 @@ async function skipQuest(req, res, next) {
     await updateUser(userId, { skipCounts, avoidancePatterns, villainModeActive });
 
     // Invalidate caches
+    const todayStr = new Date().toISOString().slice(0, 10);
+    await redis.del(`quests:${userId}:${todayStr}`);
     await redis.del(`quests:${userId}`);
     await redis.del(`stats:${userId}`);
 

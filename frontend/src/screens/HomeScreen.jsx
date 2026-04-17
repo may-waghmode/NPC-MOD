@@ -21,21 +21,11 @@ export default function HomeScreen() {
   const { megaQuest, formattedTime, acceptMegaQuest } = useMegaQuest();
   const { notifications, unreadCount, markAllRead } = useNotifications();
   const [levelUp, setLevelUp] = useState(null);
-  const [completingId, setCompletingId] = useState(null);
   const [showNotifs, setShowNotifs] = useState(false);
 
-  const handleComplete = async (quest) => {
-    if (quest.proof_type !== 'honor_system') {
-      navigate(`/quest/${quest.id}`, { state: { quest } });
-      return;
-    }
-    setCompletingId(quest.id);
-    const result = await completeQuest(quest.id, 'honor_system', {});
-    setCompletingId(null);
-    if (result.leveledUp) {
-      setLevelUp({ level: result.newLevel, title: result.title });
-    }
-    refetchPlayer();
+  // All quests now require photo proof — navigate to detail screen
+  const handleComplete = (quest) => {
+    navigate(`/quest/${quest.id}`, { state: { quest } });
   };
 
   const handleSkip = async (questId) => {
@@ -111,14 +101,27 @@ export default function HomeScreen() {
                 transition={{ delay: i * 0.05 }}
               >
                 <span className="notif-item-icon">
-                  {CAT_ICONS[notif.questCategory] || '⚡'}
+                  {notif.type === 'challenge_completed' ? '⚔️' :
+                   notif.type === 'challenge_received' ? '🎯' :
+                   notif.type === 'challenge_declined' ? '❌' :
+                   CAT_ICONS[notif.questCategory] || '⚡'}
                 </span>
                 <div className="notif-item-content">
                   <span className="notif-item-name">{notif.fromName}</span>
-                  {' completed '}
-                  <span className="notif-item-quest">{notif.questTitle}</span>
-                  {notif.xpEarned > 0 && (
-                    <span className="notif-item-xp"> (+{notif.xpEarned} XP)</span>
+                  {notif.type === 'challenge_completed' ? (
+                    <span> {notif.message}</span>
+                  ) : notif.type === 'challenge_received' ? (
+                    <span> {notif.message}</span>
+                  ) : notif.type === 'challenge_declined' ? (
+                    <span> {notif.message}</span>
+                  ) : (
+                    <>
+                      {' completed '}
+                      <span className="notif-item-quest">{notif.questTitle}</span>
+                      {notif.xpEarned > 0 && (
+                        <span className="notif-item-xp"> (+{notif.xpEarned} XP)</span>
+                      )}
+                    </>
                   )}
                 </div>
               </motion.div>
@@ -181,10 +184,15 @@ export default function HomeScreen() {
                     <span className="qc-badge" style={{ background: 'rgba(255,107,157,0.15)', color: '#FF6B9D' }}>
                       👤 From {quest.assignedByName || 'Friend'}
                     </span>
-                    <span className="qc-xp font-game">⚡{quest.xp_reward || 50}</span>
+                    <span className="qc-xp font-game">⚡{quest.challengeXpReward || quest.xp_reward || 50}</span>
                   </div>
                   <h3 className="qc-title">{quest.title}</h3>
                   <p className="qc-desc">{quest.description}</p>
+                  {quest.challengeXpReward && (
+                    <p style={{ fontSize: 11, color: '#FF9F43', marginTop: 4 }}>
+                      💰 {quest.challengeXpReward} XP wagered by {quest.assignedByName || 'friend'}
+                    </p>
+                  )}
                   <div className="qc-actions">
                     <button
                       className="btn btn--primary btn--sm"
@@ -227,6 +235,7 @@ export default function HomeScreen() {
             <p className="mq-desc">{megaQuest.description_template || megaQuest.description}</p>
             <div className="mq-footer">
               <span className="mq-players">🌍 {megaQuest.participantCount || 0} players in</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>📸 Photo proof required</span>
             </div>
             {!megaQuest.accepted && (
               <button className="btn btn--danger btn--full" style={{ marginTop: 12 }} onClick={acceptMegaQuest}>
@@ -239,9 +248,9 @@ export default function HomeScreen() {
                 <button
                   className="btn btn--primary btn--full"
                   style={{ marginTop: 8 }}
-                  onClick={() => navigate(`/quest/${megaQuest.id}`, { state: { quest: { ...megaQuest, category: 'boss', xp_reward: megaQuest.xpReward || 400 } } })}
+                  onClick={() => navigate(`/quest/${megaQuest.id || 'mega'}`, { state: { quest: { ...megaQuest, id: megaQuest.id || 'mega', category: 'boss', xp_reward: megaQuest.xpReward || 400, proof_type: 'photo', proof_instructions: megaQuest.proof_instructions || 'Take a photo as evidence of conquering the boss battle!' } } })}
                 >
-                  📋 Submit Proof
+                  📸 Submit Photo Proof
                 </button>
               </div>
             )}
@@ -264,7 +273,7 @@ export default function HomeScreen() {
           <p style={{ fontWeight: 600 }}>No active quests</p>
           <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
             {player?.questsCompleted > 0
-              ? 'All done! New quests generate in a few hours.'
+              ? 'All done! New quests generate tomorrow.'
               : 'Complete onboarding to get your first AI-generated quests!'}
           </p>
           <button className="btn btn--primary btn--sm" style={{ marginTop: 12 }} onClick={refetchQuests}>
@@ -277,11 +286,11 @@ export default function HomeScreen() {
             {quests.map((quest, i) => {
               const cat = quest.category || 'growth';
               const color = CAT_COLORS[cat] || '#6C63FF';
-              const isCompleting = completingId === quest.id;
+              const isFriendQuest = quest.assignedBy && quest.assignedBy !== 'self' && quest.assignedBy !== 'system';
               return (
                 <motion.div
                   key={quest.id}
-                  className="quest-card"
+                  className={`quest-card ${isFriendQuest ? 'challenge-card' : ''}`}
                   style={{ '--cat-color': color }}
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -289,7 +298,7 @@ export default function HomeScreen() {
                   transition={{ delay: i * 0.06 }}
                   layout
                 >
-                  <div className="qc-color-bar" style={{ background: color }} />
+                  <div className="qc-color-bar" style={{ background: isFriendQuest ? 'linear-gradient(180deg, #FF6B9D, #FF4757)' : color }} />
                   <div className="qc-content">
                     <div className="qc-top">
                       <span className="qc-badge" style={{ background: `${color}20`, color }}>
@@ -301,7 +310,9 @@ export default function HomeScreen() {
                       </div>
                     </div>
                     {quest.assignedByName && (
-                      <span className="qc-from-friend">👤 From {quest.assignedByName}</span>
+                      <span className="qc-from-friend">👤 From {quest.assignedByName}
+                        {quest.challengeXpReward ? ` • ${quest.challengeXpReward} XP wagered` : ''}
+                      </span>
                     )}
                     <h3 className="qc-title">{quest.title}</h3>
                     <p className="qc-desc">{quest.description}</p>
@@ -312,21 +323,18 @@ export default function HomeScreen() {
                       <button
                         className="btn btn--primary btn--sm"
                         onClick={() => handleComplete(quest)}
-                        disabled={isCompleting}
                       >
-                        {isCompleting ? '...' : quest.proof_type === 'photo' ? '📸 Photo Proof' : quest.proof_type === 'text' ? '✍️ Text Proof' : '✅ Complete'}
+                        📸 Photo Proof
                       </button>
                       <button className="btn btn--ghost btn--sm" onClick={() => handleSkip(quest.id)}>
                         Skip
                       </button>
-                      {quest.proof_type !== 'honor_system' && (
-                        <button
-                          className="btn btn--ghost btn--sm"
-                          onClick={() => navigate(`/quest/${quest.id}`, { state: { quest } })}
-                        >
-                          Details →
-                        </button>
-                      )}
+                      <button
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => navigate(`/quest/${quest.id}`, { state: { quest } })}
+                      >
+                        Details →
+                      </button>
                     </div>
                   </div>
                 </motion.div>

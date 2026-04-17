@@ -11,8 +11,8 @@ const MOCK_QUESTS = [
     xp_reward: 50,
     difficulty: 'easy',
     why_it_helps: 'Physical movement resets your mental state and boosts creative thinking.',
-    proof_type: 'honor_system',
-    proof_instructions: 'Mark complete when you\'re back from your walk.',
+    proof_type: 'photo',
+    proof_instructions: 'Take a photo of something interesting you noticed on your walk.',
     estimated_minutes: 15,
   },
   {
@@ -22,8 +22,8 @@ const MOCK_QUESTS = [
     xp_reward: 40,
     difficulty: 'medium',
     why_it_helps: 'Rebuilding dormant connections strengthens your social safety net.',
-    proof_type: 'text',
-    proof_instructions: 'Paste the message you sent (we won\'t judge the cringe).',
+    proof_type: 'photo',
+    proof_instructions: 'Take a screenshot of the message you sent.',
     estimated_minutes: 10,
   },
   {
@@ -33,9 +33,20 @@ const MOCK_QUESTS = [
     xp_reward: 45,
     difficulty: 'easy',
     why_it_helps: 'Micro-learning sessions compound into deep knowledge over time.',
-    proof_type: 'text',
-    proof_instructions: 'Write your 3 takeaways here.',
+    proof_type: 'photo',
+    proof_instructions: 'Take a photo of your 3 written takeaways.',
     estimated_minutes: 20,
+  },
+  {
+    title: 'The Chaos Roll',
+    description: 'Do something completely random you\'ve never done before. Cook a new recipe, try a new route, or learn a random skill for 15 minutes.',
+    category: 'chaos',
+    xp_reward: 55,
+    difficulty: 'medium',
+    why_it_helps: 'Breaking routine builds adaptability and sparks creativity.',
+    proof_type: 'photo',
+    proof_instructions: 'Take a photo proving you tried something new!',
+    estimated_minutes: 15,
   },
 ];
 
@@ -46,8 +57,8 @@ const MOCK_MEGA_QUEST = {
   xp_reward: 400,
   difficulty: 'hard',
   why_it_helps: 'Boss battles accelerate growth by forcing you past your default patterns.',
-  proof_type: 'text',
-  proof_instructions: 'Describe what you did and how it felt. Be honest.',
+  proof_type: 'photo',
+  proof_instructions: 'Take a photo as evidence of you crushing your comfort zone!',
   estimated_minutes: 120,
   deadline_hours: 168,
 };
@@ -56,24 +67,36 @@ const MOCK_MEGA_QUEST = {
  * Build the system prompt for quest generation.
  */
 function buildSystemPrompt() {
-  return `You are an expert behavioral psychologist and RPG game designer.
-Your job is to generate hyper-personalized life quests for a real person.
+  return `You are a fun life coach and game designer creating quests for a self-improvement app.
+Your job is to make personalized daily challenges that feel like a game.
 
-RULES:
-- Target ROOT CAUSES of avoided behaviors, not surface symptoms
-- If user skips social quests repeatedly, start SMALLER (eye contact → smile → say hi → short conversation)
-- Match difficulty to behavior: many skips = easier quests, strong streak = harder quests
-- One quest must always be slightly uncomfortable (growth edge)
-- Chaos quest is always surprising but achievable
-- Language must feel personal, slightly witty, never generic corporate-speak
-- Never say "exercise more" — say "Defeat the Couch Dragon"
-- proof_type must be one of: "photo", "text", "honor_system"
+LANGUAGE RULES:
+- Use SIMPLE, everyday words. Write like you're texting a friend.
+- Quest titles should be short, catchy, and fun (use emojis sometimes)
+- Descriptions should be clear — anyone should understand what to do
+- Don't use fancy words or corporate language
+- Keep it casual and motivating
+
+QUEST DESIGN RULES:
+- Make quests practical and doable in real life
+- If user skips a category often, make those quests EASIER (baby steps)
+- If user has a streak going, level up the difficulty a bit
+- One quest should push them slightly outside their comfort zone
+- Include one fun/random quest for variety
+- ALL quests MUST have proof_type set to "photo"
+- proof_instructions should clearly say what photo to take (be specific, e.g. "Take a pic of your walking route" not just "Take a photo")
 
 PERSONALIZE BY CLASS:
-- Warrior: Frame as battles and conquest
-- Scholar: Frame as experiments and data
-- Social: Frame as connections and challenges
-- Explorer: Frame as adventures and discoveries
+- Warrior: Action-oriented, physical challenges
+- Scholar: Learning and thinking challenges
+- Social: People and conversation challenges
+- Explorer: Try new things and adventures
+
+PERSONALIZE BY GOALS:
+- Base quest themes on what the user actually wants to improve
+- Work around their avoidance patterns
+- Introverts get gentler social quests, extroverts get bolder ones
+- Match quest timing to when they have most energy
 
 Return ONLY valid JSON, no markdown, no explanation, no code fences.`;
 }
@@ -85,6 +108,7 @@ function buildUserMessage(userProfile, behaviorLog = []) {
   const now = new Date();
   return JSON.stringify({
     user: {
+      name: userProfile.name || 'Adventurer',
       class: userProfile.class || 'Explorer',
       level: userProfile.level || 1,
       goals: userProfile.goals || [],
@@ -94,15 +118,18 @@ function buildUserMessage(userProfile, behaviorLog = []) {
       motivationStyle: userProfile.motivationStyle || 'curiosity',
       streak: userProfile.streak || 0,
       avoidancePatterns: userProfile.avoidancePatterns || [],
+      questsCompleted: userProfile.questsCompleted || 0,
+      xp: userProfile.xp || 0,
     },
     behavior_summary: summarizeBehavior(behaviorLog),
     context: {
       time_of_day: now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening',
       day_of_week: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()],
+      date: now.toISOString().slice(0, 10),
     },
     required_output: {
-      daily_quests: '3 quests, each with: title, description, category (social|fitness|growth|chaos), xp_reward (30-70), difficulty (easy|medium|hard), why_it_helps, proof_type (photo|text|honor_system), proof_instructions, estimated_minutes (5-60)',
-      mega_quest: '1 boss battle with: title, description, category (boss), xp_reward (300-500), difficulty (hard), why_it_helps, proof_type, proof_instructions, estimated_minutes (60-180), deadline_hours (168)',
+      daily_quests: '4 quests, each with: title, description, category (social|fitness|growth|chaos), xp_reward (30-70), difficulty (easy|medium|hard), why_it_helps, proof_type (MUST be "photo"), proof_instructions (describe what photo to take), estimated_minutes (5-60)',
+      mega_quest: '1 boss battle with: title, description, category (boss), xp_reward (300-500), difficulty (hard), why_it_helps, proof_type (MUST be "photo"), proof_instructions (describe what photo to take), estimated_minutes (60-180), deadline_hours (168)',
     },
   });
 }
@@ -122,13 +149,27 @@ function summarizeBehavior(log) {
 }
 
 /**
+ * Force all quests to have photo proof (safety net for AI output).
+ */
+function enforcePhotoProof(quest) {
+  return {
+    ...quest,
+    proof_type: 'photo',
+    proof_instructions: quest.proof_instructions || 'Take a photo as proof of completion!',
+  };
+}
+
+/**
  * Generate daily quests using Gemini API.
  * Falls back to mock quests if API key not set or call fails.
  */
 async function generateQuests(userProfile, behaviorLog = []) {
   if (!GEMINI_API_KEY) {
     console.warn('⚠️  GEMINI_API_KEY not set. Using mock quests.');
-    return { daily_quests: MOCK_QUESTS, mega_quest: MOCK_MEGA_QUEST };
+    return {
+      daily_quests: MOCK_QUESTS.map(enforcePhotoProof),
+      mega_quest: enforcePhotoProof(MOCK_MEGA_QUEST),
+    };
   }
 
   try {
@@ -151,16 +192,22 @@ async function generateQuests(userProfile, behaviorLog = []) {
 
     if (data && Array.isArray(data.daily_quests) && data.daily_quests.length >= 3) {
       return {
-        daily_quests: data.daily_quests.slice(0, 3),
-        mega_quest: data.mega_quest || MOCK_MEGA_QUEST,
+        daily_quests: data.daily_quests.slice(0, 4).map(enforcePhotoProof),
+        mega_quest: enforcePhotoProof(data.mega_quest || MOCK_MEGA_QUEST),
       };
     }
 
     console.warn('⚠️  Gemini returned unexpected format, using mock quests.');
-    return { daily_quests: MOCK_QUESTS, mega_quest: MOCK_MEGA_QUEST };
+    return {
+      daily_quests: MOCK_QUESTS.map(enforcePhotoProof),
+      mega_quest: enforcePhotoProof(MOCK_MEGA_QUEST),
+    };
   } catch (err) {
     console.warn(`⚠️  Gemini quest generation failed (${err.message}). Using mock quests.`);
-    return { daily_quests: MOCK_QUESTS, mega_quest: MOCK_MEGA_QUEST };
+    return {
+      daily_quests: MOCK_QUESTS.map(enforcePhotoProof),
+      mega_quest: enforcePhotoProof(MOCK_MEGA_QUEST),
+    };
   }
 }
 

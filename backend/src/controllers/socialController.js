@@ -1,5 +1,6 @@
 const {
   getUser,
+  updateUser,
   addFriend,
   getFriends,
   addSubDoc,
@@ -94,6 +95,8 @@ async function addFriendByCode(req, res, next) {
 
 /**
  * POST /api/social/assign
+ * Challenge a friend with a quest. Sender sets custom XP reward.
+ * When the friend completes the quest, they earn the XP and the sender loses it.
  */
 async function assignQuest(req, res, next) {
   try {
@@ -103,34 +106,54 @@ async function assignQuest(req, res, next) {
     if (!friendId) throw new ValidationError('friendId is required.');
     if (!questTitle) throw new ValidationError('questTitle is required.');
 
+    const rewardAmount = Math.max(10, Math.min(500, parseInt(xpReward) || 50));
+
     // Verify friendship
     const friends = await getFriends(userId);
     if (!friends.some(f => f.id === friendId)) {
       throw new ValidationError('You can only assign quests to friends.');
     }
 
+    // Validate sender has enough XP
     const senderUser = await getUser(userId);
+    if ((senderUser.xp || 0) < rewardAmount) {
+      throw new ValidationError(`Not enough XP! You have ${senderUser.xp || 0} XP but trying to wager ${rewardAmount} XP.`);
+    }
 
     // Add quest to friend's quests subcollection
     const questId = await addSubDoc(friendId, 'quests', {
       title: questTitle,
-      description: questDescription || `A quest from ${senderUser.name || 'a friend'}!`,
+      description: questDescription || `A challenge from ${senderUser.name || 'a friend'}!`,
       category: category || 'social',
-      xp_reward: xpReward || 50,
+      xp_reward: rewardAmount,
+      challengeXpReward: rewardAmount, // Store the wagered XP amount
       difficulty: 'medium',
       status: 'pending', // Friend must accept
       assignedBy: userId,
       assignedByName: senderUser.name || 'A Friend',
-      proof_type: 'honor_system',
-      proof_instructions: 'Complete the quest and mark it done!',
+      proof_type: 'photo', // All challenges require photo proof
+      proof_instructions: 'Take a photo as proof that you completed this challenge!',
       estimated_minutes: 30,
-      why_it_helps: 'Your friend believes in you. Don\'t let them down!',
+      why_it_helps: `Your friend ${senderUser.name || 'someone'} wagered ${rewardAmount} XP on you. Don\'t let them down!`,
+    });
+
+    // Notify the friend
+    await addSubDoc(friendId, 'notifications', {
+      type: 'challenge_received',
+      fromUserId: userId,
+      fromName: senderUser.name || 'A Friend',
+      questTitle,
+      xpReward: rewardAmount,
+      message: `challenged you with "${questTitle}" for ${rewardAmount} XP!`,
+      read: false,
+      createdAt: Timestamp.now(),
     });
 
     res.json({
       success: true,
       questId,
-      message: `Quest sent to your friend!`,
+      xpWagered: rewardAmount,
+      message: `Challenge sent! ${rewardAmount} XP wagered.`,
     });
   } catch (err) {
     next(err);
@@ -147,8 +170,24 @@ async function acceptAssignedQuest(req, res, next) {
 
     if (!questId) throw new ValidationError('questId is required.');
 
-    const { updateSubDoc } = require('../firebase/firestoreHelpers');
-    await updateSubDoc(userId, 'quests', questId, { status: 'active' });
+    const { getSubDoc, updateSubDoc } = require('../firebase/firestoreHelpers');
+
+    // Check current status to prevent double-accept
+    const quest = await getSubDoc(userId, 'quests', questId);
+    if (!quest) throw new NotFoundError('Quest not found.');
+
+    if (quest.status === 'active') {
+      return res.json({ success: true, message: 'Quest already accepted.' });
+    }
+
+    if (quest.status !== 'pending') {
+      throw new ValidationError('This quest cannot be accepted (status: ' + quest.status + ').');
+    }
+
+    await updateSubDoc(userId, 'quests', questId, {
+      status: 'active',
+      acceptedAt: Timestamp.now(),
+    });
 
     res.json({ success: true });
   } catch (err) {

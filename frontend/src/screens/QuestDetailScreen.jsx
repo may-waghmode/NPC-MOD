@@ -16,8 +16,7 @@ export default function QuestDetailScreen() {
   const { refetch: refetchPlayer } = usePlayer();
   const fileInputRef = useRef(null);
 
-  const [proofText, setProofText] = useState('');
-  const [proofImage, setProofImage] = useState(null);
+  const [proofImages, setProofImages] = useState([]); // array of { base64, mimeType, preview, fileName }
   const [verifying, setVerifying] = useState(false);
   const [result, setResult] = useState(null);
   const [levelUp, setLevelUp] = useState(null);
@@ -28,55 +27,71 @@ export default function QuestDetailScreen() {
   }
 
   const catColor = CAT_COLORS[quest.category] || '#6C63FF';
-  const proofType = quest.proof_type || 'honor_system';
 
   const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
+    // Limit to 5 photos total
+    const maxPhotos = 5;
+    const remaining = maxPhotos - proofImages.length;
+    const toProcess = files.slice(0, remaining);
+
+    if (files.length > remaining) {
+      alert(`You can upload up to ${maxPhotos} photos. Adding first ${remaining}.`);
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be under 5MB');
-      return;
+    for (const file of toProcess) {
+      if (!file.type.startsWith('image/')) continue;
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`${file.name} is over 5MB, skipping.`);
+        continue;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setProofImages(prev => [
+          ...prev,
+          {
+            base64: reader.result.split(',')[1],
+            mimeType: file.type,
+            preview: reader.result,
+            fileName: file.name,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProofImage({
-        base64: reader.result.split(',')[1],
-        mimeType: file.type,
-        preview: reader.result,
-        fileName: file.name,
-      });
-    };
-    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (index) => {
+    setProofImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    setVerifying(true);
-    const proofData = {};
+    if (proofImages.length === 0) {
+      alert('📸 Please upload at least one photo!');
+      return;
+    }
 
-    if (proofType === 'text') {
-      proofData.text = proofText;
-    }
-    if (proofType === 'photo') {
-      if (proofImage) {
-        proofData.imageBase64 = proofImage.base64;
-        proofData.imageMimeType = proofImage.mimeType;
-      } else {
-        // No photo? Submit as honor system
-        proofData.text = 'Completed (no photo attached)';
-      }
-    }
+    setVerifying(true);
+
+    // Send all images to backend
+    const proofData = {
+      images: proofImages.map(img => ({
+        base64: img.base64,
+        mimeType: img.mimeType,
+      })),
+      // Also send first image as legacy fields for backward compat
+      imageBase64: proofImages[0].base64,
+      imageMimeType: proofImages[0].mimeType,
+    };
 
     try {
-      const res = await completeQuest(quest.id, proofType, proofData);
+      const res = await completeQuest(quest.id, 'photo', proofData);
       setResult(res);
       if (res.leveledUp) {
         setTimeout(() => setLevelUp({ level: res.newLevel, title: res.title }), 800);
@@ -90,8 +105,7 @@ export default function QuestDetailScreen() {
 
   const canSubmit = () => {
     if (verifying) return false;
-    if (proofType === 'text' && !proofText.trim()) return false;
-    // Photo proof: allow submit even without photo (will auto-approve)
+    if (proofImages.length === 0) return false;
     return true;
   };
 
@@ -111,6 +125,18 @@ export default function QuestDetailScreen() {
           <h1 className="qd-title">{quest.title}</h1>
           <p className="qd-desc">{quest.description}</p>
         </div>
+
+        {/* From Friend Badge */}
+        {quest.assignedByName && (
+          <div className="qd-from-friend" style={{ borderLeftColor: '#FF6B9D' }}>
+            <span>👤 Challenge from <strong>{quest.assignedByName}</strong></span>
+            {quest.challengeXpReward && (
+              <span className="font-game" style={{ color: 'var(--xp-gold)', fontSize: 12 }}>
+                ⚡ {quest.challengeXpReward} XP wagered
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Why It Helps */}
         {quest.why_it_helps && (
@@ -134,65 +160,51 @@ export default function QuestDetailScreen() {
             <span className="qd-meta-key">Estimated</span>
           </div>
           <div className="qd-meta-chip">
-            <span className="qd-meta-val">{proofType === 'photo' ? '📸' : proofType === 'text' ? '✍️' : '✅'}</span>
-            <span className="qd-meta-key">{proofType === 'photo' ? 'Photo' : proofType === 'text' ? 'Text' : 'Honor'}</span>
+            <span className="qd-meta-val">📸</span>
+            <span className="qd-meta-key">Photo Proof</span>
           </div>
         </div>
 
-        {/* ── Proof Submission ── */}
+        {/* ── Photo Proof Submission ── */}
         {!result && (
           <div className="qd-proof">
-            <h3 className="qd-proof-heading">Submit Your Proof</h3>
+            <h3 className="qd-proof-heading">📸 Upload Photo Proof</h3>
             {quest.proof_instructions && (
               <p className="qd-proof-hint">{quest.proof_instructions}</p>
             )}
 
-            {/* Photo Upload */}
-            {proofType === 'photo' && (
-              <div className="qd-photo-area">
-                {proofImage ? (
-                  <div className="qd-photo-preview-wrap">
-                    <img src={proofImage.preview} alt="Proof" className="qd-photo-img" />
-                    <div className="qd-photo-actions">
-                      <span className="qd-photo-name">📎 {proofImage.fileName}</span>
-                      <button className="btn btn--ghost btn--sm" onClick={() => { setProofImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
-                        ✕ Remove
-                      </button>
-                    </div>
+            {/* Photo Grid (show uploaded photos) */}
+            {proofImages.length > 0 && (
+              <div className="qd-photo-grid">
+                {proofImages.map((img, i) => (
+                  <div key={i} className="qd-photo-thumb">
+                    <img src={img.preview} alt={`Proof ${i + 1}`} />
+                    <button className="qd-photo-remove" onClick={() => removeImage(i)}>✕</button>
                   </div>
-                ) : (
-                  <label className="qd-photo-drop">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleImageUpload}
-                      hidden
-                    />
-                    <span style={{ fontSize: 36 }}>📸</span>
-                    <span style={{ fontWeight: 600 }}>Tap to take photo or upload</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>JPG, PNG — max 5MB</span>
-                  </label>
-                )}
-                <p className="qd-photo-optional">💡 Photo is optional. You can submit without one and it'll be auto-approved.</p>
+                ))}
               </div>
             )}
 
-            {/* Text Input */}
-            {proofType === 'text' && (
-              <textarea
-                className="input qd-text-input"
-                placeholder="Describe what you did..."
-                value={proofText}
-                onChange={e => setProofText(e.target.value)}
-                rows={4}
-                autoFocus
-              />
-            )}
-
-            {proofType === 'honor_system' && (
-              <p className="qd-honor-msg">This quest uses the honor system. Just click submit when you're done! 🤝</p>
+            {/* Add More Photos Button */}
+            {proofImages.length < 5 && (
+              <label className="qd-photo-drop">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  onChange={handleImageUpload}
+                  hidden
+                />
+                <span style={{ fontSize: 32 }}>📸</span>
+                <span style={{ fontWeight: 600 }}>
+                  {proofImages.length === 0 ? 'Tap to take photo or upload' : 'Add more photos'}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                  JPG, PNG — max 5MB each • {proofImages.length}/5 photos
+                </span>
+              </label>
             )}
 
             <button
@@ -202,11 +214,17 @@ export default function QuestDetailScreen() {
               disabled={!canSubmit()}
             >
               {verifying ? (
-                <span>🤖 AI is verifying your proof...</span>
+                <span>🤖 AI is checking your photos...</span>
               ) : (
-                <span>✅ Submit & Complete</span>
+                <span>📸 Submit {proofImages.length > 0 ? `${proofImages.length} Photo${proofImages.length > 1 ? 's' : ''}` : ''} & Complete</span>
               )}
             </button>
+
+            {proofImages.length === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', marginTop: 8 }}>
+                Upload at least 1 photo. AI will check if it matches the quest.
+              </p>
+            )}
           </div>
         )}
 
@@ -233,6 +251,15 @@ export default function QuestDetailScreen() {
               {result.streakMultiplier > 1 && (
                 <p style={{ fontSize: 12, color: 'var(--success)' }}>🔥 Streak bonus: {result.streakMultiplier}x</p>
               )}
+              {!result.verified && (
+                <button
+                  className="btn btn--primary btn--full"
+                  style={{ marginTop: 12 }}
+                  onClick={() => { setResult(null); setProofImages([]); }}
+                >
+                  📸 Try Again with Different Photos
+                </button>
+              )}
               {result.hiddenQuestUnlocked && (
                 <motion.div
                   className="qd-hidden-quest"
@@ -244,9 +271,11 @@ export default function QuestDetailScreen() {
                   <p>{result.hiddenQuestUnlocked.title}</p>
                 </motion.div>
               )}
-              <button className="btn btn--primary btn--full" style={{ marginTop: 16 }} onClick={() => navigate('/')}>
-                ← Back to Quests
-              </button>
+              {result.verified && (
+                <button className="btn btn--primary btn--full" style={{ marginTop: 16 }} onClick={() => navigate('/')}>
+                  ← Back to Quests
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,5 +1,6 @@
 /**
  * useMegaQuest — global mega quest with live countdown.
+ * Handles one-time accept per user.
  */
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
@@ -27,6 +28,9 @@ export function useMegaQuest() {
         participantCount: 847,
         endTime: endTime.toISOString(),
         timeRemaining: endTime.getTime() - Date.now(),
+        proof_type: 'photo',
+        proof_instructions: 'Take a photo as evidence of conquering the boss battle!',
+        accepted: false,
       });
       setTimeRemaining(endTime.getTime() - Date.now());
     } finally {
@@ -52,15 +56,37 @@ export function useMegaQuest() {
   }, [timeRemaining > 0]);
 
   const acceptMegaQuest = useCallback(async () => {
+    // Prevent double-accept on frontend
+    if (megaQuest?.accepted) {
+      console.warn('Boss battle already accepted');
+      return;
+    }
+
     try {
       const { data } = await api.post('/global/mega-quest/accept');
-      setMegaQuest(prev => ({ ...prev, participantCount: data.participantCount, accepted: true }));
+
+      if (data.alreadyAccepted) {
+        // Already accepted — just update UI state
+        setMegaQuest(prev => ({
+          ...prev,
+          participantCount: data.participantCount,
+          accepted: true,
+        }));
+        return data;
+      }
+
+      setMegaQuest(prev => ({
+        ...prev,
+        participantCount: data.participantCount,
+        accepted: true,
+      }));
       return data;
     } catch (err) {
       console.warn('Accept mega quest failed:', err.message || err);
+      // Still mark as accepted in UI to prevent spam
       setMegaQuest(prev => ({ ...prev, accepted: true }));
     }
-  }, []);
+  }, [megaQuest?.accepted]);
 
   const formatTime = useCallback((ms) => {
     if (ms <= 0) return 'EXPIRED';

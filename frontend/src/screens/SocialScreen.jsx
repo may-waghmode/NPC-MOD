@@ -16,7 +16,9 @@ export default function SocialScreen() {
   const [showAssign, setShowAssign] = useState(null);
   const [questTitle, setQuestTitle] = useState('');
   const [questDesc, setQuestDesc] = useState('');
+  const [questXP, setQuestXP] = useState(50);
   const [sentMsg, setSentMsg] = useState('');
+  const [sending, setSending] = useState(false);
 
   const handleAddFriend = async () => {
     if (!friendCode.trim()) return;
@@ -33,16 +35,28 @@ export default function SocialScreen() {
 
   const handleAssign = async (friendId, friendName) => {
     if (!questTitle.trim()) return;
+    if (questXP < 10 || questXP > 500) {
+      alert('XP must be between 10 and 500');
+      return;
+    }
+    if ((player?.xp || 0) < questXP) {
+      alert(`Not enough XP! You have ${player?.xp || 0} XP but trying to wager ${questXP} XP.`);
+      return;
+    }
+    setSending(true);
     try {
-      await assignQuest(friendId, questTitle, questDesc || `A challenge from ${player?.name || 'a friend'}!`, 50, 'social');
-      setSentMsg(`⚔️ Quest sent to ${friendName}!`);
+      await assignQuest(friendId, questTitle, questDesc || `A challenge from ${player?.name || 'a friend'}!`, questXP, 'social');
+      setSentMsg(`⚔️ Challenge sent to ${friendName}! ${questXP} XP wagered.`);
       setShowAssign(null);
       setQuestTitle('');
       setQuestDesc('');
-      setTimeout(() => setSentMsg(''), 3000);
+      setQuestXP(50);
+      setTimeout(() => setSentMsg(''), 4000);
     } catch (err) {
-      alert('Failed to send quest: ' + (err?.response?.data?.message || err.message));
+      const msg = err?.response?.data?.message || err.message || 'Failed to send quest';
+      alert('Failed: ' + msg);
     }
+    setSending(false);
   };
 
   return (
@@ -110,7 +124,8 @@ export default function SocialScreen() {
                   <span className="ic-from">From: {quest.assignedByName || 'A Friend'}</span>
                   <h4 className="ic-title">{quest.title}</h4>
                   {quest.description && <p className="ic-desc">{quest.description}</p>}
-                  <span className="ic-xp font-game">⚡ {quest.xp_reward || 50} XP</span>
+                  <span className="ic-xp font-game">⚡ {quest.challengeXpReward || quest.xp_reward || 50} XP wagered</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginTop: 2 }}>📸 Photo proof required</span>
                 </div>
                 <div className="ic-actions">
                   <button className="btn btn--primary btn--sm" onClick={() => acceptIncomingQuest(quest.id)}>
@@ -165,7 +180,7 @@ export default function SocialScreen() {
         </div>
       )}
 
-      {/* Assign Quest Modal */}
+      {/* Assign Quest Modal with XP Input */}
       <AnimatePresence>
         {showAssign && (
           <motion.div className="modal-overlay" onClick={() => setShowAssign(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -176,8 +191,9 @@ export default function SocialScreen() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0 }}
             >
-              <h3 className="modal-title">⚔️ Send {showAssign.name} a Quest!</h3>
-              <p className="modal-subtitle">Challenge your friend to do something awesome</p>
+              <h3 className="modal-title">⚔️ Challenge {showAssign.name}!</h3>
+              <p className="modal-subtitle">Wager your XP — if they complete it, they earn it and you lose it!</p>
+
               <input
                 className="input"
                 placeholder="Quest title (e.g. 'Talk to 3 strangers')"
@@ -194,15 +210,46 @@ export default function SocialScreen() {
                 rows={3}
                 style={{ marginTop: 8 }}
               />
+
+              {/* XP Wager Input */}
+              <div className="xp-wager-section" style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: 6 }}>
+                  💰 XP to Wager
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="range"
+                    min="10"
+                    max={Math.min(500, player?.xp || 50)}
+                    step="10"
+                    value={questXP}
+                    onChange={e => setQuestXP(parseInt(e.target.value))}
+                    style={{ flex: 1 }}
+                  />
+                  <span className="font-game" style={{ fontSize: 14, color: 'var(--xp-gold)', minWidth: 60, textAlign: 'right' }}>
+                    ⚡{questXP} XP
+                  </span>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                  Your XP: {player?.xp || 0} • After wager: {Math.max(0, (player?.xp || 0) - questXP)}
+                </p>
+                <p style={{ fontSize: 11, color: '#FF9F43', marginTop: 2 }}>
+                  ⚠️ If {showAssign.name} completes this quest, they get {questXP} XP and you lose {questXP} XP.
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                  📸 Photo proof will be required.
+                </p>
+              </div>
+
               <div className="modal-actions">
                 <button className="btn btn--ghost" onClick={() => setShowAssign(null)}>Cancel</button>
                 <button
                   className="btn btn--primary"
                   style={{ flex: 1 }}
                   onClick={() => handleAssign(showAssign.friendId, showAssign.name)}
-                  disabled={!questTitle.trim()}
+                  disabled={!questTitle.trim() || sending || (player?.xp || 0) < questXP}
                 >
-                  ⚔️ Send Quest
+                  {sending ? '⏳ Sending...' : `⚔️ Wager ${questXP} XP & Send`}
                 </button>
               </div>
             </motion.div>
