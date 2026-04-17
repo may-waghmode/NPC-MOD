@@ -57,14 +57,17 @@ async function expirePreviousDayQuests(userId) {
 async function getDailyQuests(req, res, next) {
   try {
     const { userId } = req;
+    console.log(`\n🎯 getDailyQuests called for user: ${userId}`);
 
     // 0. Expire quests from previous days so new ones can be generated
-    await expirePreviousDayQuests(userId);
+    const expiredCount = await expirePreviousDayQuests(userId);
+    console.log(`   Expired ${expiredCount} old quests`);
 
     // 1. Check for existing active quests first
     const existingQuests = await querySubCollection(userId, 'quests', {
       where: { field: 'status', op: '==', value: 'active' },
     });
+    console.log(`   Found ${existingQuests.length} active quests in Firestore`);
 
     // 1b. Also fetch pending challenge quests from friends
     const pendingQuests = await querySubCollection(userId, 'quests', {
@@ -78,14 +81,22 @@ async function getDailyQuests(req, res, next) {
     const todayDailyQuests = existingQuests.filter(q => {
       if (q.category === 'boss') return false;
       if (q.assignedBy && q.assignedBy !== 'self' && q.assignedBy !== 'system') return false;
+      // Check if the quest was created TODAY
+      const created = q.createdAt?.toDate ? q.createdAt.toDate() : (q.createdAt ? new Date(q.createdAt) : null);
+      if (!created || created < todayStart) return false; // Exclude quests without valid date or from previous days
       return true;
     });
+    console.log(`   Today's daily quests: ${todayDailyQuests.length}`);
+    if (todayDailyQuests.length > 0) {
+      console.log(`   Titles: ${todayDailyQuests.map(q => q.title).join(', ')}`);
+    }
 
     // Friend-assigned active quests (always show)
     const friendQuests = existingQuests.filter(q => q.assignedBy && q.assignedBy !== 'self' && q.assignedBy !== 'system');
 
     // If user already has today's daily quests, return them + pending challenges
     if (todayDailyQuests.length > 0) {
+      console.log(`   ✅ Returning ${todayDailyQuests.length} existing quests (already generated today)`);
       const mega = existingQuests.find(q => q.category === 'boss') || null;
       return res.json({
         daily_quests: [...todayDailyQuests, ...friendQuests],
@@ -98,14 +109,17 @@ async function getDailyQuests(req, res, next) {
     // 2. Check if user completed onboarding
     const userProfile = await getUser(userId);
     if (!userProfile || !userProfile.onboardingComplete) {
+      console.log(`   ❌ Onboarding not complete! userProfile exists: ${!!userProfile}, onboardingComplete: ${userProfile?.onboardingComplete}`);
       return res.json({ daily_quests: friendQuests, mega_quest: null, challenges, cached: false, message: 'Complete onboarding first!' });
     }
+    console.log(`   ✅ Onboarding complete. Name: ${userProfile.name}, Class: ${userProfile.class}, Goals: ${(userProfile.goals || []).join(', ')}`);
 
     // 3. Check Redis cache (keyed by userId + date so new day = new quests)
     const today = new Date().toISOString().slice(0, 10);
     const cacheKey = `quests:${userId}:${today}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
+      console.log(`   📦 Returning cached quests from Redis`);
       return res.json({
         daily_quests: [...(cached.daily_quests || []), ...friendQuests],
         mega_quest: cached.mega_quest,
@@ -120,9 +134,12 @@ async function getDailyQuests(req, res, next) {
       direction: 'desc',
       limit: 50,
     });
+    console.log(`   📊 Behavior log entries: ${behaviorLog.length}`);
 
     // 5. Call Gemini AI to generate personalized quests
+    console.log(`   🤖 Calling Gemini AI to generate personalized quests...`);
     const { daily_quests, mega_quest } = await generateQuests(userProfile, behaviorLog);
+    console.log(`   🤖 AI returned ${daily_quests.length} quests. First title: "${daily_quests[0]?.title || 'N/A'}"`);
 
     // 6. Save quests to Firestore
     const savedQuests = [];
@@ -135,6 +152,7 @@ async function getDailyQuests(req, res, next) {
       });
       savedQuests.push({ id, ...quest, proof_type: 'photo', status: 'active', assignedBy: 'self' });
     }
+    console.log(`   💾 Saved ${savedQuests.length} quests to Firestore`);
 
     // Save mega quest (boss battle)
     const megaId = await addSubDoc(userId, 'quests', {
